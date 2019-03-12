@@ -121,7 +121,7 @@ some program wants to use them.
 
 typedef struct
 {
-    /*<<opengl_funcpointers_decl_global:4>>*/
+/*<<opengl_funcpointers_decl_global:4>>*/
 } GLBapi;
 
 /*

@@ -725,15 +725,26 @@ glbResult glbBuildLoadXMLFile(glbBuild &context, const char* filePath)
 }
 
 
-int glbBuildHasTypeBeenOutput(glbBuild &context, const char* type)
+bool glbBuildHasTypeBeenOutput(glbBuild &context, const char* typeName)
 {
     for (size_t iType = 0; iType < context.outputTypes.size(); ++iType) {
-        if (context.outputTypes[iType] == type) {
-            return 1;
+        if (context.outputTypes[iType] == typeName) {
+            return true;
         }
     }
 
-    return 0;   /* Not found. */
+    return false;   /* Not found. */
+}
+
+bool glbBuildHasCommandBeenOutput(glbBuild &context, const char* commandName)
+{
+    for (size_t iCommand = 0; iCommand < context.outputCommands.size(); ++iCommand) {
+        if (context.outputCommands[iCommand] == commandName) {
+            return true;
+        }
+    }
+
+    return false;   /* Not found. */
 }
 
 glbResult glbBuildFindType(glbBuild &context, const char* typeName, glbType** ppType)
@@ -867,24 +878,29 @@ glbResult glbBuildGenerateCode_C_Main_RequireCommands(glbBuild &context, glbRequ
     glbResult result;
 
     for (size_t iCommand = 0; iCommand < require.commands.size(); ++iCommand) {
-        glbCommand* pCommand;
-        result = glbBuildFindCommand(context, require.commands[iCommand].c_str(), &pCommand);
-        if (result != GLB_SUCCESS) {
-            return result;
-        }
-
-        codeOut += "typedef " + pCommand->returnTypeC + " (APIENTRYP PFN" + glbToUpper(pCommand->name) + "PROC)(";
-        if (pCommand->params.size() > 0) {
-            for (size_t iParam = 0; iParam < pCommand->params.size(); ++iParam) {
-                if (iParam != 0) {
-                    codeOut += ", ";
-                }
-                codeOut += pCommand->params[iParam].typeC + " " + pCommand->params[iParam].name;
+        const char* commandName = require.commands[iCommand].c_str();
+        if (!glbBuildHasCommandBeenOutput(context, commandName)) {
+            glbCommand* pCommand;
+            result = glbBuildFindCommand(context, require.commands[iCommand].c_str(), &pCommand);
+            if (result != GLB_SUCCESS) {
+                return result;
             }
-        } else {
-            codeOut += "void";  // we need to use "func(void)" syntax for compatibility with older versions of C.
+
+            codeOut += "typedef " + pCommand->returnTypeC + " (APIENTRYP PFN" + glbToUpper(pCommand->name) + "PROC)(";
+            if (pCommand->params.size() > 0) {
+                for (size_t iParam = 0; iParam < pCommand->params.size(); ++iParam) {
+                    if (iParam != 0) {
+                        codeOut += ", ";
+                    }
+                    codeOut += pCommand->params[iParam].typeC + " " + pCommand->params[iParam].name;
+                }
+            } else {
+                codeOut += "void";  // we need to use "func(void)" syntax for compatibility with older versions of C.
+            }
+            codeOut += ");\n";
+
+            context.outputCommands.push_back(commandName);
         }
-        codeOut += ");\n";
     }
 
     return GLB_SUCCESS;
@@ -1071,6 +1087,163 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
     return GLB_SUCCESS;
 }
 
+
+
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(glbBuild &context, int indentation, const glbRequire &require, std::vector<std::string> &processedCommands, std::string &codeOut)
+{
+    glbResult result;
+
+    for (size_t iCommand = 0; iCommand < require.commands.size(); ++iCommand) {
+        std::string commandName = require.commands[iCommand];
+        if (std::find(processedCommands.begin(), processedCommands.end(), commandName) == processedCommands.end()) {
+            glbCommand* pCommand;
+            result = glbBuildFindCommand(context, require.commands[iCommand].c_str(), &pCommand);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+
+            for (int i = 0; i < indentation; ++i) {
+                codeOut += " ";
+            }
+            codeOut += "PFN" + glbToUpper(pCommand->name) + "PROC " + pCommand->name + ";\n";
+
+            processedCommands.push_back(commandName);
+        }
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(glbBuild &context, int indentation, const glbExtension &extension, std::vector<std::string> &processedCommands, std::string &codeOut)
+{
+    for (size_t iRequire = 0; iRequire < extension.requires.size(); ++iRequire) {
+        glbResult result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(context, indentation, extension.requires[iRequire], processedCommands, codeOut);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }       
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(glbBuild &context, int indentation, const glbFeature &feature, std::vector<std::string> &processedCommands, std::string &codeOut)
+{
+    for (size_t iRequire = 0; iRequire < feature.requires.size(); ++iRequire) {
+        glbResult result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(context, indentation, feature.requires[iRequire], processedCommands, codeOut);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }       
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int indentation, std::string &codeOut)
+{
+    glbResult result;
+    std::vector<std::string> processedCommands;
+
+    // GL features.
+    for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
+        glbFeature &feature = context.features[iFeature];
+        if (feature.api == "gl") {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+
+#if 0
+    // WGL features.
+    codeOut += "#if defined(GLBIND_WGL)\n";
+    for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
+        glbFeature &feature = context.features[iFeature];
+        if (feature.api == "wgl") {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_WGL */\n";
+#endif
+
+#if 0
+    codeOut += "#if defined(GLBIND_GLX)\n";
+    for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
+        glbFeature &feature = context.features[iFeature];
+        if (feature.api == "glx") {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_GLX */\n";
+#endif
+
+    // GL extensions.
+    for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
+        glbExtension &extension = context.extensions[iExtension];
+        if (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore")) {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+
+    // WGL extensions.
+    codeOut += "#if defined(GLBIND_WGL)\n";
+    for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
+        glbExtension &extension = context.extensions[iExtension];
+        if (glbContains(extension.supported, "wgl")) {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_WGL */\n";
+
+    // GLX extensions.
+    codeOut += "#if defined(GLBIND_GLX)\n";
+    for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
+        glbExtension &extension = context.extensions[iExtension];
+        if (glbContains(extension.supported, "glx")) {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_GLX */";
+
+    return GLB_SUCCESS;
+}
+
+#include <time.h>
+glbResult glbBuildGenerateCode_C_Date(glbBuild &context, std::string &codeOut)
+{
+    (void)context;
+
+    time_t t = time(NULL);
+
+    char dateStr[32];
+#if defined(_MSC_VER)
+    struct tm local;
+    localtime_s(&local, &t);
+    strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", &local);
+#else
+    struct tm *local = localtime(&t);
+    strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", local);
+#endif
+
+    codeOut += dateStr;
+    return GLB_SUCCESS;
+}
+
 glbResult glbBuildGenerateCode_C(glbBuild &context, const char* tag, std::string &codeOut)
 {
     if (tag == NULL) {
@@ -1080,6 +1253,17 @@ glbResult glbBuildGenerateCode_C(glbBuild &context, const char* tag, std::string
     glbResult result = GLB_INVALID_ARGS;
     if (strcmp(tag, "/*<<opengl_main>>*/") == 0) {
         result = glbBuildGenerateCode_C_Main(context, codeOut);
+    }
+    if (strcmp(tag, "/*<<opengl_funcpointers_decl_global>>*/") == 0) {
+        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 0, codeOut);
+    }
+    if (strcmp(tag, "/*<<opengl_funcpointers_decl_global:4>>*/") == 0) {
+        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 4, codeOut);
+    }
+
+
+    if (strcmp(tag, "<<date>>") == 0) {
+        result = glbBuildGenerateCode_C_Date(context, codeOut);
     }
 
     return result;
@@ -1101,20 +1285,16 @@ glbResult glbBuildGenerateOutputFile(glbBuild &context, const char* outputFilePa
     // There will be a series of tags that we need to replace with generated code.
     const char* tags[] = {
         "/*<<opengl_main>>*/",
-#if 0
         "/*<<opengl_funcpointers_decl_global>>*/",
         "/*<<opengl_funcpointers_decl_global:4>>*/",
+#if 0
         "/*<<load_global_api_funcpointers>>*/",
         "/*<<set_struct_api_from_global>>*/",
         "/*<<set_global_api_from_struct>>*/",
-        "/*<<load_instance_api>>*/",
-        "/*<<load_device_api>>*/",
-        "/*<<load_safe_global_api>>*/",
-        "<<safe_global_api_docs>>",
-        "<<vulkan_version>>",
+        "<<opengl_version>>",
         "<<revision>>",
-        "<<date>>",
 #endif
+        "<<date>>",
     };
 
     for (size_t iTag = 0; iTag < sizeof(tags)/sizeof(tags[0]); ++iTag) {
