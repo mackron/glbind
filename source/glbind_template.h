@@ -12,6 +12,13 @@ David Reid - davidreidsoftware@gmail.com
 extern "C" {
 #endif
 
+/* For platform detection, I'm just assuming GLX if it's not Win32. Happy to look at making this more flexible, especially when it comes to GLES. */
+#if defined(_WIN32)
+    #define GLBIND_WGL
+#else
+    #define GLBIND_GLX
+#endif
+
 /*
 The office OpenGL headers have a dependency on a header called khrplatform.h. From what I can see it's mainly just for sized types. Since glbind is a
 single header, and that we can't just copy-and-paste the contents of khrplatform.h due to licensing, we need to do our own sized type declarations.
@@ -86,6 +93,14 @@ single header, and that we can't just copy-and-paste the contents of khrplatform
 #endif
 typedef float khronos_float_t;
 
+/* Platform headers. */
+#if defined(GLBIND_WGL)
+#include <windows.h>    /* Can we remove this dependency? */
+#endif
+#if defined(GLBIND_GLX)
+/* TODO: Include X headers. */
+#endif
+
 /*
 The office OpenGL headers have traditionally defined their APIs with APIENTRY, APIENTRYP and GLAPI. I'm including these just in case
 some program wants to use them.
@@ -143,7 +158,6 @@ GLenum glbBindAPI(const GLBapi* pAPI);
  ******************************************************************************/
 #ifdef GLBIND_IMPLEMENTATION
 #ifdef _WIN32
-#include <windows.h>
 #else
 #include <unistd.h>
 #include <dlfcn.h>

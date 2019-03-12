@@ -12,6 +12,7 @@
 
 typedef int glbResult;
 #define GLB_SUCCESS                 0
+#define GLB_ALREADY_PROCESSED       1   /* Not an error. Used to indicate that a type has already been output. */
 #define GLB_ERROR                   -1
 #define GLB_INVALID_ARGS            -2
 #define GLB_OUT_OF_MEMORY           -3
@@ -64,6 +65,15 @@ void glbReplaceAllInline(std::string &source, const std::string &from, const std
     source = glbReplaceAll(source, from, to);
 }
 
+std::string glbToUpper(const std::string &source)
+{
+    // Quick and dirty...
+    std::string upper;
+    for (size_t i = 0; i < source.size(); ++i) {
+        upper += (char)std::toupper(source[i]);
+    }
+    return upper;
+}
 
 
 
@@ -271,13 +281,40 @@ struct glbCommands
     std::vector<glbCommand> commands;
 };
 
+struct glbRequire
+{
+    std::vector<std::string> types;
+    std::vector<std::string> enums;
+    std::vector<std::string> commands;
+};
+
+struct glbFeature
+{
+    std::string api;
+    std::string name;
+    std::string number;
+    std::vector<glbRequire> requires;
+};
+
+struct glbExtension
+{
+    std::string name;
+    std::string supported;
+    std::vector<glbRequire> requires;
+};
 
 struct glbBuild
 {
-    std::vector<glbType>     types;
-    std::vector<glbGroup>    groups;
-    std::vector<glbEnums>    enums;
-    std::vector<glbCommands> commands;
+    std::vector<glbType>      types;
+    std::vector<glbGroup>     groups;
+    std::vector<glbEnums>     enums;
+    std::vector<glbCommands>  commands;
+    std::vector<glbFeature>   features;
+    std::vector<glbExtension> extensions;
+
+    std::vector<std::string> outputTypes;
+    std::vector<std::string> outputEnums;
+    std::vector<std::string> outputCommands;
 };
 
 glbResult glbBuildParseTypes(glbBuild &context, tinyxml2::XMLNode* pXMLElement)
@@ -516,6 +553,117 @@ glbResult glbBuildParseCommands(glbBuild &context, tinyxml2::XMLElement* pXMLEle
     return GLB_SUCCESS;
 }
 
+glbResult glbBuildParseRequire(glbBuild &context, tinyxml2::XMLElement* pXMLElement, glbRequire &require)
+{
+    (void)context;
+
+    for (tinyxml2::XMLNode* pChild = pXMLElement->FirstChild(); pChild != NULL; pChild = pChild->NextSibling()) {
+        tinyxml2::XMLElement* pChildElement = pChild->ToElement();
+        if (pChildElement == NULL) {
+            continue;
+        }
+
+        if (strcmp(pChildElement->Name(), "type") == 0) {
+            require.types.push_back(pChildElement->Attribute("name"));
+        }
+
+        if (strcmp(pChildElement->Name(), "enum") == 0) {
+            require.enums.push_back(pChildElement->Attribute("name"));
+        }
+
+        if (strcmp(pChildElement->Name(), "command") == 0) {
+            require.commands.push_back(pChildElement->Attribute("name"));
+        }
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildParseFeature(glbBuild &context, tinyxml2::XMLElement* pXMLElement)
+{
+    glbFeature feature;
+
+    const char* api    = pXMLElement->Attribute("api");
+    const char* name   = pXMLElement->Attribute("name");
+    const char* number = pXMLElement->Attribute("number");
+
+    feature.api    = (api    != NULL) ? api    : "";
+    feature.name   = (name   != NULL) ? name   : "";
+    feature.number = (number != NULL) ? number : "";
+
+    for (tinyxml2::XMLNode* pChild = pXMLElement->FirstChild(); pChild != NULL; pChild = pChild->NextSibling()) {
+        tinyxml2::XMLElement* pChildElement = pChild->ToElement();
+        if (pChildElement == NULL) {
+            continue;
+        }
+
+        if (strcmp(pChildElement->Name(), "require") == 0) {
+            glbRequire require;
+            glbResult result = glbBuildParseRequire(context, pChildElement, require);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+
+            feature.requires.push_back(require);
+        }
+    }
+
+    context.features.push_back(feature);
+
+    return GLB_SUCCESS;
+}
+
+
+glbResult glbBuildParseExtension(glbBuild &context, tinyxml2::XMLElement* pXMLElement, glbExtension &extension)
+{
+    const char* name      = pXMLElement->Attribute("name");
+    const char* supported = pXMLElement->Attribute("supported");
+
+    extension.name      = (name      != NULL) ? name      : "";
+    extension.supported = (supported != NULL) ? supported : "";
+
+    for (tinyxml2::XMLNode* pChild = pXMLElement->FirstChild(); pChild != NULL; pChild = pChild->NextSibling()) {
+        tinyxml2::XMLElement* pChildElement = pChild->ToElement();
+        if (pChildElement == NULL) {
+            continue;
+        }
+
+        if (strcmp(pChildElement->Name(), "require") == 0) {
+            glbRequire require;
+            glbResult result = glbBuildParseRequire(context, pChildElement, require);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+
+            extension.requires.push_back(require);
+        }
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildParseExtensions(glbBuild &context, tinyxml2::XMLElement* pXMLElement)
+{
+    for (tinyxml2::XMLNode* pChild = pXMLElement->FirstChild(); pChild != NULL; pChild = pChild->NextSibling()) {
+        tinyxml2::XMLElement* pChildElement = pChild->ToElement();
+        if (pChildElement == NULL) {
+            continue;
+        }
+
+        if (strcmp(pChildElement->Name(), "extension") == 0) {
+            glbExtension extension;
+            glbResult result = glbBuildParseExtension(context, pChildElement, extension);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+
+            context.extensions.push_back(extension);
+        }
+    }
+
+    return GLB_SUCCESS;
+}
+
 glbResult glbBuildLoadXML(glbBuild &context, tinyxml2::XMLDocument &doc)
 {
     // The root node is the <registry> node.
@@ -548,6 +696,12 @@ glbResult glbBuildLoadXML(glbBuild &context, tinyxml2::XMLDocument &doc)
         if (strcmp(pChildElement->Name(), "commands") == 0) {
             glbBuildParseCommands(context, pChildElement);
         }
+        if (strcmp(pChildElement->Name(), "feature") == 0) {
+            glbBuildParseFeature(context, pChildElement);
+        }
+        if (strcmp(pChildElement->Name(), "extensions") == 0) {
+            glbBuildParseExtensions(context, pChildElement);
+        }
     }
 
     return GLB_SUCCESS;
@@ -563,6 +717,318 @@ glbResult glbBuildLoadXMLFile(glbBuild &context, const char* filePath)
     }
 
     return glbBuildLoadXML(context, docGL);
+}
+
+
+int glbBuildHasTypeBeenOutput(glbBuild &context, const char* type)
+{
+    for (size_t iType = 0; iType < context.outputTypes.size(); ++iType) {
+        if (context.outputTypes[iType] == type) {
+            return 1;
+        }
+    }
+
+    return 0;   /* Not found. */
+}
+
+glbResult glbBuildFindType(glbBuild &context, const char* typeName, glbType** ppType)
+{
+    *ppType = NULL;
+
+    for (size_t iType = 0; iType < context.types.size(); ++iType) {
+        if (context.types[iType].name == typeName) {
+            *ppType = &context.types[iType];
+            return GLB_SUCCESS;
+        }
+    }
+    
+    return GLB_ERROR;
+}
+
+glbResult glbBuildFindEnum(glbBuild &context, const char* enumName, glbEnum** ppEnum)
+{
+    *ppEnum = NULL;
+
+    for (size_t iEnums = 0; iEnums < context.enums.size(); ++iEnums) {
+        glbEnums &enums = context.enums[iEnums];
+        for (size_t iEnum = 0; iEnum < enums.enums.size(); ++iEnum) {
+            if (context.enums[iEnums].enums[iEnum].name == enumName) {
+                *ppEnum = &context.enums[iEnums].enums[iEnum];
+                return GLB_SUCCESS;
+            }
+        }
+    }
+    
+    return GLB_ERROR;
+}
+
+glbResult glbBuildFindCommand(glbBuild &context, const char* commandName, glbCommand** ppCommand)
+{
+    *ppCommand = NULL;
+
+    for (size_t iCommands = 0; iCommands < context.commands.size(); ++iCommands) {
+        glbCommands &commands = context.commands[iCommands];
+        for (size_t iCommand = 0; iCommand < commands.commands.size(); ++iCommand) {
+            if (context.commands[iCommands].commands[iCommand].name == commandName) {
+                *ppCommand = &context.commands[iCommands].commands[iCommand];
+                return GLB_SUCCESS;
+            }
+        }
+    }
+    
+    return GLB_ERROR;
+}
+
+
+glbResult glbBuildGenerateCode_C_Main_Type(glbBuild &context, const char* typeName, std::string &codeOut)
+{
+    // Special case for khrplatform. We don't want to include this because we don't use khrplatform.h. Just pretend it's already been output.
+    if (strcmp(typeName, "khrplatform") == 0) {
+        return GLB_ALREADY_PROCESSED;
+    }
+
+    // We only output the type if it hasn't already been output.
+    if (!glbBuildHasTypeBeenOutput(context, typeName)) {
+        glbType* pType;
+        glbResult result = glbBuildFindType(context, typeName, &pType);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }
+
+        if (pType->valueC != "") {
+            codeOut += pType->valueC + "\n";
+        }
+
+        context.outputTypes.push_back(typeName);
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_Main_RequireTypes(glbBuild &context, glbRequire &require, std::string &codeOut)
+{
+    glbResult result;
+
+    // Standalone types.
+    for (size_t iType = 0; iType < require.types.size(); ++iType) {
+        result = glbBuildGenerateCode_C_Main_Type(context, require.types[iType].c_str(), codeOut);
+        if (result != GLB_SUCCESS && result != GLB_ALREADY_PROCESSED) {
+            return result;
+        }
+    }
+
+    // Required types.
+    for (size_t iCommand = 0; iCommand < require.commands.size(); ++iCommand) {
+        glbCommand* pCommand;
+        result = glbBuildFindCommand(context, require.commands[iCommand].c_str(), &pCommand);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }
+
+        if (pCommand->returnType != "") {
+            glbBuildGenerateCode_C_Main_Type(context, pCommand->returnType.c_str(), codeOut);
+        }
+
+        for (size_t iParam = 0; iParam < pCommand->params.size(); ++iParam) {
+            glbCommandParam &param = pCommand->params[iParam];
+            if (param.type != "") {
+                glbBuildGenerateCode_C_Main_Type(context, param.type.c_str(), codeOut);
+            }
+        }
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_Main_RequireEnums(glbBuild &context, glbRequire &require, std::string &codeOut)
+{
+    glbResult result;
+
+    for (size_t iEnum = 0; iEnum < require.enums.size(); ++iEnum) {
+        glbEnum* pEnum;
+        result = glbBuildFindEnum(context, require.enums[iEnum].c_str(), &pEnum);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }
+
+        codeOut += "#define " + pEnum->name + " " + pEnum->value + "\n";
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_Main_RequireCommands(glbBuild &context, glbRequire &require, std::string &codeOut)
+{
+    glbResult result;
+
+    for (size_t iCommand = 0; iCommand < require.commands.size(); ++iCommand) {
+        glbCommand* pCommand;
+        result = glbBuildFindCommand(context, require.commands[iCommand].c_str(), &pCommand);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }
+
+        codeOut += "typedef " + pCommand->returnTypeC + " (APIENTRYP PFN" + glbToUpper(pCommand->name) + "PROC)(";
+        for (size_t iParam = 0; iParam < pCommand->params.size(); ++iParam) {
+            if (iParam != 0) {
+                codeOut += ", ";
+            }
+            codeOut += pCommand->params[iParam].typeC + " " + pCommand->params[iParam].name;
+        }
+        codeOut += ");\n";
+    }
+
+    return GLB_SUCCESS;
+}
+
+
+glbResult glbBuildGenerateCode_C_Main_Feature(glbBuild &context, glbFeature &feature, std::string &codeOut)
+{
+    codeOut += "#ifndef " + feature.name + "\n";
+    codeOut += "#define " + feature.name + " 1\n";
+    {
+        // Types.
+        for (size_t iRequire = 0; iRequire < feature.requires.size(); ++iRequire) {
+            glbResult result = glbBuildGenerateCode_C_Main_RequireTypes(context, feature.requires[iRequire], codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }       
+        }
+
+        // Enums.
+        for (size_t iRequire = 0; iRequire < feature.requires.size(); ++iRequire) {
+            glbResult result = glbBuildGenerateCode_C_Main_RequireEnums(context, feature.requires[iRequire], codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }       
+        }
+
+        // Commands.
+        for (size_t iRequire = 0; iRequire < feature.requires.size(); ++iRequire) {
+            glbResult result = glbBuildGenerateCode_C_Main_RequireCommands(context, feature.requires[iRequire], codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }       
+        }
+    }
+    codeOut += "#endif /* " + feature.name + " */\n";
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_Main_FeaturesByAPI(glbBuild &context, const char* api, std::string &codeOut)
+{
+    int counter = 0;    // Only used for knowing whether or not a new line should be added.
+
+    for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
+        glbFeature &feature = context.features[iFeature];
+        if (feature.api == api) {
+            if (counter > 0) {
+                codeOut += "\n";
+            }
+
+            glbResult result = glbBuildGenerateCode_C_Main_Feature(context, feature, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+
+            counter += 1;
+        }
+    }
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
+{
+    glbResult result;
+
+    // Feature order is the following.
+    //  - gl
+    //  - wgl
+    //  - glx
+    result = glbBuildGenerateCode_C_Main_FeaturesByAPI(context, "gl", codeOut);
+    if (result != GLB_SUCCESS) {
+        return result;
+    }
+
+    codeOut += "\n#if defined(GLBIND_WGL)\n";
+    result = glbBuildGenerateCode_C_Main_FeaturesByAPI(context, "wgl", codeOut);
+    if (result != GLB_SUCCESS) {
+        return result;
+    }
+    codeOut += "#endif /* GLBIND_WGL */\n";
+
+    codeOut += "\n#if defined(GLBIND_GLX)\n";
+    result = glbBuildGenerateCode_C_Main_FeaturesByAPI(context, "glx", codeOut);
+    if (result != GLB_SUCCESS) {
+        return result;
+    }
+    codeOut += "#endif /* GLBIND_GLX */\n";
+
+    // TODO: All other APIs no in gl, wgl and glx (gles2, etc.)? 
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C(glbBuild &context, const char* tag, std::string &codeOut)
+{
+    if (tag == NULL) {
+        return GLB_INVALID_ARGS;
+    }
+
+    glbResult result = GLB_INVALID_ARGS;
+    if (strcmp(tag, "/*<<opengl_main>>*/") == 0) {
+        result = glbBuildGenerateCode_C_Main(context, codeOut);
+    }
+
+    return result;
+}
+
+glbResult glbBuildGenerateOutputFile(glbBuild &context, const char* outputFilePath)
+{
+    // Before doing anything we need to grab the template.
+    size_t templateFileSize;
+    char* pTemplateFileData;
+    glbResult result = glbOpenAndReadTextFile(GLB_BUILD_TEMPLATE_PATH, &templateFileSize, &pTemplateFileData);
+    if (result != GLB_SUCCESS) {
+        return result;
+    }
+
+    std::string outputStr = pTemplateFileData;
+    free(pTemplateFileData);
+
+    // There will be a series of tags that we need to replace with generated code.
+    const char* tags[] = {
+        "/*<<opengl_main>>*/",
+#if 0
+        "/*<<opengl_funcpointers_decl_global>>*/",
+        "/*<<opengl_funcpointers_decl_global:4>>*/",
+        "/*<<load_global_api_funcpointers>>*/",
+        "/*<<set_struct_api_from_global>>*/",
+        "/*<<set_global_api_from_struct>>*/",
+        "/*<<load_instance_api>>*/",
+        "/*<<load_device_api>>*/",
+        "/*<<load_safe_global_api>>*/",
+        "<<safe_global_api_docs>>",
+        "<<vulkan_version>>",
+        "<<revision>>",
+        "<<date>>",
+#endif
+    };
+
+    for (size_t iTag = 0; iTag < sizeof(tags)/sizeof(tags[0]); ++iTag) {
+        std::string generatedCode;
+        result = glbBuildGenerateCode_C(context, tags[iTag], generatedCode);
+        if (result != GLB_SUCCESS) {
+            return result;
+        }
+
+        glbReplaceAllInline(outputStr, tags[iTag], generatedCode);
+    }
+
+    glbOpenAndWriteTextFile(outputFilePath, outputStr.c_str());
+    return GLB_SUCCESS;
 }
 
 
@@ -591,7 +1057,7 @@ int main(int argc, char** argv)
 
 
     // Debugging
-#if 1
+#if 0
     for (size_t i = 0; i < context.types.size(); ++i) {
         printf("<type>: name=%s, valueC=%s, requires=%s\n", context.types[i].name.c_str(), context.types[i].valueC.c_str(), context.types[i].requires.c_str());
     }
@@ -622,8 +1088,12 @@ int main(int argc, char** argv)
 #endif
 
 
-    // TODO: Output file.
-
+    // Output file.
+    result = glbBuildGenerateOutputFile(context, "../../glbind.h");
+    if (result != GLB_SUCCESS) {
+        printf("Failed to generate output file.\n");
+        return (int)result;
+    }
 
     // Getting here means we're done.
     (void)argc;
