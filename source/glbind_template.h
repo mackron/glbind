@@ -157,10 +157,11 @@ GLenum glbBindAPI(const GLBapi* pAPI);
  ******************************************************************************
  ******************************************************************************/
 #ifdef GLBIND_IMPLEMENTATION
-#ifdef _WIN32
-#else
-#include <unistd.h>
-#include <dlfcn.h>
+#if defined(GLBIND_WGL)
+#endif
+#if defined(GLBIND_GLX)
+    #include <unistd.h>
+    #include <dlfcn.h>
 #endif
 
 typedef void* GLBhandle;

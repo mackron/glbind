@@ -75,6 +75,11 @@ std::string glbToUpper(const std::string &source)
     return upper;
 }
 
+bool glbContains(const std::string &source, const char* other)
+{
+    return source.find(other) != std::string::npos;
+}
+
 
 
 glbResult glbFOpen(const char* filePath, const char* openMode, FILE** ppFile)
@@ -869,11 +874,15 @@ glbResult glbBuildGenerateCode_C_Main_RequireCommands(glbBuild &context, glbRequ
         }
 
         codeOut += "typedef " + pCommand->returnTypeC + " (APIENTRYP PFN" + glbToUpper(pCommand->name) + "PROC)(";
-        for (size_t iParam = 0; iParam < pCommand->params.size(); ++iParam) {
-            if (iParam != 0) {
-                codeOut += ", ";
+        if (pCommand->params.size() > 0) {
+            for (size_t iParam = 0; iParam < pCommand->params.size(); ++iParam) {
+                if (iParam != 0) {
+                    codeOut += ", ";
+                }
+                codeOut += pCommand->params[iParam].typeC + " " + pCommand->params[iParam].name;
             }
-            codeOut += pCommand->params[iParam].typeC + " " + pCommand->params[iParam].name;
+        } else {
+            codeOut += "void";  // we need to use "func(void)" syntax for compatibility with older versions of C.
         }
         codeOut += ");\n";
     }
@@ -939,9 +948,44 @@ glbResult glbBuildGenerateCode_C_Main_FeaturesByAPI(glbBuild &context, const cha
     return GLB_SUCCESS;
 }
 
+glbResult glbBuildGenerateCode_C_Main_Extension(glbBuild &context, glbExtension &extension, std::string &codeOut)
+{
+    codeOut += "#ifndef " + extension.name + "\n";
+    codeOut += "#define " + extension.name + " 1\n";
+    {
+        // Types.
+        for (size_t iRequire = 0; iRequire < extension.requires.size(); ++iRequire) {
+            glbResult result = glbBuildGenerateCode_C_Main_RequireTypes(context, extension.requires[iRequire], codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }       
+        }
+
+        // Enums.
+        for (size_t iRequire = 0; iRequire < extension.requires.size(); ++iRequire) {
+            glbResult result = glbBuildGenerateCode_C_Main_RequireEnums(context, extension.requires[iRequire], codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }       
+        }
+
+        // Commands.
+        for (size_t iRequire = 0; iRequire < extension.requires.size(); ++iRequire) {
+            glbResult result = glbBuildGenerateCode_C_Main_RequireCommands(context, extension.requires[iRequire], codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }       
+        }
+    }
+    codeOut += "#endif /* " + extension.name + " */\n";
+
+    return GLB_SUCCESS;
+}
+
 glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
 {
     glbResult result;
+    int counter;    // Used for tracking whether or not new lines need to be added.
 
     // Feature order is the following.
     //  - gl
@@ -966,7 +1010,63 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
     }
     codeOut += "#endif /* GLBIND_GLX */\n";
 
-    // TODO: All other APIs no in gl, wgl and glx (gles2, etc.)? 
+    // TODO: All other APIs no in gl, wgl and glx (gles2, etc.)?
+
+
+    // Now we need to do extensions. For cleanliness we want to group extensions. We do gl/glcore first, then wgl, then glx.
+    counter = 0;
+    for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
+        glbExtension &extension = context.extensions[iExtension];
+        if (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore")) {
+            if (counter > 0) {
+                codeOut += "\n";
+            }
+            counter += 1;
+
+            result = glbBuildGenerateCode_C_Main_Extension(context, extension, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+
+    // WGL extensions.
+    codeOut += "\n#if defined(GLBIND_WGL)\n";
+    counter = 0;
+    for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
+        glbExtension &extension = context.extensions[iExtension];
+        if (glbContains(extension.supported, "wgl")) {
+            if (counter > 0) {
+                codeOut += "\n";
+            }
+            counter += 1;
+
+            result = glbBuildGenerateCode_C_Main_Extension(context, extension, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_WGL */\n";
+
+    // GLX extensions.
+    codeOut += "\n#if defined(GLBIND_GLX)\n";
+    counter = 0;
+    for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
+        glbExtension &extension = context.extensions[iExtension];
+        if (glbContains(extension.supported, "glx")) {
+            if (counter > 0) {
+                codeOut += "\n";
+            }
+            counter += 1;
+
+            result = glbBuildGenerateCode_C_Main_Extension(context, extension, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_GLX */\n";
 
     return GLB_SUCCESS;
 }
