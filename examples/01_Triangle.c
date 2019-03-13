@@ -1,7 +1,9 @@
+#include <stdio.h>
+
 #define GLBIND_IMPLEMENTATION
 #include "../glbind.h"
 
-#include <stdio.h>
+
 
 int main(int argc, char** argv)
 {
@@ -16,7 +18,6 @@ int main(int argc, char** argv)
 
 
     /* Do stuff. */
-
 
     glbUninit();
 
