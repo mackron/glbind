@@ -10,6 +10,19 @@
 #define GLB_BUILD_XML_PATH_GLX  "../../resources/glx.xml"
 #define GLB_BUILD_TEMPLATE_PATH "../../source/glbind_template.h"
 
+// Edit these if you want to blacklist specific extensions.
+static const char* g_BlacklistedExtensions[] = {
+    "GLX_SGIX_dmbuffer",        // Don't know what the DMparams and DMbuffer types are. I assume "DM" means "direct memory"?
+    "GLX_SGIX_video_source"     // Don't know what the VLServer, VLPath and VLNode types are.
+};
+
+// Edit these if you want to blacklist specific extension vendors.
+static const char* g_BlacklistedExtensionVendors[] = {
+    /*"SGIX"*/
+    ""
+};
+
+
 typedef int glbResult;
 #define GLB_SUCCESS                 0
 #define GLB_ALREADY_PROCESSED       1   /* Not an error. Used to indicate that a type has already been output. */
@@ -725,6 +738,52 @@ glbResult glbBuildLoadXMLFile(glbBuild &context, const char* filePath)
 }
 
 
+bool glbDoesExtensionBelongToVendor(const std::string &extensionName, const std::string &vendor)
+{
+    return extensionName.find("_" + vendor + "_") != std::string::npos;
+}
+
+bool glbIsExtensionBlackListed(const char* extensionName)
+{
+    for (auto blacklistedExtension : g_BlacklistedExtensions) {
+        if (strcmp(blacklistedExtension, extensionName) == 0) {
+            return true;
+        }
+    }
+
+    for (auto vendor : g_BlacklistedExtensionVendors) {
+        if (glbDoesExtensionBelongToVendor(extensionName, vendor)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool glbBuildIsCommandIgnored(const char* commandName)
+{
+    // The following commands should not be included in anything as they are not strictly OpenGL related.
+    static const char* ignoredCommands[] = {
+        "ChoosePixelFormat",
+        "DescribePixelFormat",
+        "GetEnhMetaFilePixelFormat",
+        "GetPixelFormat",
+        "SetPixelFormat",
+        "SwapBuffers",
+        "wglUseFontBitmaps",
+        "wglUseFontOutlines",
+    };
+
+    for (size_t i = 0; i < sizeof(ignoredCommands)/sizeof(ignoredCommands[0]); ++i) {
+        if (strcmp(ignoredCommands[i], commandName) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 bool glbBuildHasTypeBeenOutput(glbBuild &context, const char* typeName)
 {
     for (size_t iType = 0; iType < context.outputTypes.size(); ++iType) {
@@ -1033,7 +1092,7 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
     counter = 0;
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore"))) {
             if (counter > 0) {
                 codeOut += "\n";
             }
@@ -1051,7 +1110,7 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
     counter = 0;
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "wgl")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "wgl")) {
             if (counter > 0) {
                 codeOut += "\n";
             }
@@ -1070,7 +1129,7 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
     counter = 0;
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "glx")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "glx")) {
             if (counter > 0) {
                 codeOut += "\n";
             }
@@ -1088,28 +1147,6 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
 }
 
 
-glbResult glbBuildIsCommandIgnored(const char* commandName)
-{
-    // The following commands should not be included in anything as they are not strictly OpenGL related.
-    static const char* ignoredCommands[] = {
-        "ChoosePixelFormat",
-        "DescribePixelFormat",
-        "GetEnhMetaFilePixelFormat",
-        "GetPixelFormat",
-        "SetPixelFormat",
-        "SwapBuffers",
-        "wglUseFontBitmaps",
-        "wglUseFontOutlines",
-    };
-
-    for (size_t i = 0; i < sizeof(ignoredCommands)/sizeof(ignoredCommands[0]); ++i) {
-        if (strcmp(ignoredCommands[i], commandName) == 0) {
-            return true;
-        }
-    }
-
-    return false;
-}
 
 glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(glbBuild &context, int indentation, const glbRequire &require, std::vector<std::string> &processedCommands, std::string &codeOut)
 {
@@ -1212,7 +1249,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     // GL extensions.
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore"))) {
             result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1224,7 +1261,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     codeOut += "#if defined(GLBIND_WGL)\n";
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "wgl")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "wgl")) {
             result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1237,7 +1274,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     codeOut += "#if defined(GLBIND_GLX)\n";
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "glx")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "glx")) {
             result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1342,7 +1379,7 @@ glbResult glbBuildGenerateCode_C_InitCurrentContextAPI(glbBuild &context, std::s
     // GL extensions.
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore"))) {
             result = glbBuildGenerateCode_C_InitCurrentContextAPI_Extension(context, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1354,7 +1391,7 @@ glbResult glbBuildGenerateCode_C_InitCurrentContextAPI(glbBuild &context, std::s
     codeOut += "#if defined(GLBIND_WGL)\n";
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "wgl")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "wgl")) {
             result = glbBuildGenerateCode_C_InitCurrentContextAPI_Extension(context, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1367,7 +1404,7 @@ glbResult glbBuildGenerateCode_C_InitCurrentContextAPI(glbBuild &context, std::s
     codeOut += "#if defined(GLBIND_GLX)\n";
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "glx")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "glx")) {
             result = glbBuildGenerateCode_C_InitCurrentContextAPI_Extension(context, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1452,7 +1489,7 @@ glbResult glbBuildGenerateCode_C_SetGlobalAPIFromStruct(glbBuild &context, std::
     // GL extensions.
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore"))) {
             result = glbBuildGenerateCode_C_SetGlobalAPIFromStruct_Extension(context, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1464,7 +1501,7 @@ glbResult glbBuildGenerateCode_C_SetGlobalAPIFromStruct(glbBuild &context, std::
     codeOut += "#if defined(GLBIND_WGL)\n";
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "wgl")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "wgl")) {
             result = glbBuildGenerateCode_C_SetGlobalAPIFromStruct_Extension(context, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
@@ -1477,7 +1514,7 @@ glbResult glbBuildGenerateCode_C_SetGlobalAPIFromStruct(glbBuild &context, std::
     codeOut += "#if defined(GLBIND_GLX)\n";
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
-        if (glbContains(extension.supported, "glx")) {
+        if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "glx")) {
             result = glbBuildGenerateCode_C_SetGlobalAPIFromStruct_Extension(context, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
