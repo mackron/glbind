@@ -98,7 +98,8 @@ typedef float khronos_float_t;
 #include <windows.h>    /* Can we remove this dependency? */
 #endif
 #if defined(GLBIND_GLX)
-/* TODO: Include X headers. */
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #endif
 
 /*
@@ -248,6 +249,9 @@ static LRESULT GLBIND_DummyWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, L
 }
 #endif
 #if defined(GLBIND_GLX)
+Display*    glbind_DummyDisplay  = 0;
+GLXDrawable glbind_DummyDrawable = 0;
+GLXContext  glbind_DummyRC       = 0;
 #endif
 
 #if defined(GLBIND_WGL)
@@ -267,6 +271,7 @@ PFNGLXSWAPBUFFERSPROC           glbind_glxSwapBuffers;
 PFNGLXGETCURRENTCONTEXTPROC     glbind_glxGetCurrentContext;
 PFNGLXQUERYEXTENSIONSSTRINGPROC glbind_glxQueryExtensionsString;
 PFNGLXGETCURRENTDISPLAYPROC     glbind_glxGetCurrentDisplay;
+PFNGLXGETCURRENTDRAWABLEPROC    glbind_glxGetCurrentDrawable;
 PFNGLXCHOOSEFBCONFIGPROC        glbind_glxChooseFBConfig;
 PFNGLXGETVISUALFROMFBCONFIGPROC glbind_glxGetVisualFromFBConfig;
 PFNGLXGETPROCADDRESSPROC        glbind_glxGetProcAddress;
@@ -336,6 +341,7 @@ GLenum glbInit(GLBapi* pAPI)
         glbind_wglGetCurrentDC          = (PFNWGLGETCURRENTDCPROC         )glb_dlsym(g_glbOpenGLSO, "wglGetCurrentDC");
         glbind_wglGetProcAddress        = (PFNWGLGETPROCADDRESSPROC       )glb_dlsym(g_glbOpenGLSO, "wglGetProcAddress");
         glbind_wglMakeCurrent           = (PFNWGLMAKECURRENTPROC          )glb_dlsym(g_glbOpenGLSO, "wglMakeCurrent");
+
         if (glbind_wglCreateContext     == NULL ||
             glbind_wglDeleteContext     == NULL ||
             glbind_wglGetCurrentContext == NULL ||
@@ -356,6 +362,7 @@ GLenum glbInit(GLBapi* pAPI)
         glbind_glxGetCurrentContext     = (PFNGLXGETCURRENTCONTEXTPROC    )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentContext");
         glbind_glxQueryExtensionsString = (PFNGLXQUERYEXTENSIONSSTRINGPROC)glb_dlsym(g_glbOpenGLSO, "glXQueryExtensionsString");
         glbind_glxGetCurrentDisplay     = (PFNGLXGETCURRENTDISPLAYPROC    )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentDisplay");
+        glbind_glxGetCurrentDrawable     = (PFNGLXGETCURRENTDRAWABLEPROC  )glb_dlsym(g_glbOpenGLSO, "glxGetCurrentDrawable");
         glbind_glxChooseFBConfig        = (PFNGLXCHOOSEFBCONFIGPROC       )glb_dlsym(g_glbOpenGLSO, "glXChooseFBConfig");
         glbind_glxGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC)glb_dlsym(g_glbOpenGLSO, "glXGetVisualFromFBConfig");
         glbind_glxGetProcAddress        = (PFNGLXGETPROCADDRESSPROC       )glb_dlsym(g_glbOpenGLSO, "glXGetProcAddress");
@@ -368,6 +375,7 @@ GLenum glbInit(GLBapi* pAPI)
             glbind_glxGetCurrentContext     == NULL ||
             glbind_glxQueryExtensionsString == NULL ||
             glbind_glxGetCurrentDisplay     == NULL ||
+            glbind_glxGetCurrentDrawable    == NULL ||
             glbind_glxChooseFBConfig        == NULL ||
             glbind_glxGetVisualFromFBConfig == NULL ||
             glbind_glxGetProcAddress        == NULL) {
@@ -518,12 +526,12 @@ GLenum glbInitContextAPI(Display *dpy, GLXDrawable drawable, GLXContext rc, GLBa
     GLenum result;
     GLXContext rcPrev = 0;
     GLXDrawable drawablePrev = 0;
-    Display* displayPrev = NULL;
+    Display* dpyPrev = NULL;
 
     if (glbind_glxGetCurrentContext && glbind_glxGetCurrentDrawable && glbind_glxGetCurrentDisplay) {
         rcPrev       = glbind_glxGetCurrentContext();
         drawablePrev = glbind_glxGetCurrentDrawable();
-        displayPrev  = glbind_glxGetCurrentDisplay();
+        dpyPrev      = glbind_glxGetCurrentDisplay();
     }
 
     glbind_glxMakeCurrent(dpy, drawable, rc);
@@ -540,7 +548,10 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
         return GL_INVALID_OPERATION;
     }
 
-    memset(pAPI, 0, sizeof(*pAPI));
+    /* Just to avoid a memset() dependency. I wonder if a good compiler will optimize this... */
+    for (size_t i = 0; i < sizeof(*pAPI); ++i) {
+        ((GLbyte*)pAPI)[i] = 0;
+    }
 
 /*<<init_current_context_api>>*/
 

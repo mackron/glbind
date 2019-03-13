@@ -1,11 +1,14 @@
 #define GLBIND_IMPLEMENTATION
 #include "../glbind.h"
 
+#include <stdio.h>
+
 int main(int argc, char** argv)
 {
     GLBapi gl;
     GLenum result = glbInit(&gl);
     if (result != GL_NO_ERROR) {
+        printf("Failed to initialize glbind.\n");
         return result;
     }
 
