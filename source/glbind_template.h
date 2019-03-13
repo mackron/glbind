@@ -540,7 +540,9 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
         return GL_INVALID_OPERATION;
     }
 
-    /*<<init_current_context_api>>*/
+    memset(pAPI, 0, sizeof(*pAPI));
+
+/*<<init_current_context_api>>*/
 
     return GL_NO_ERROR;
 }
@@ -596,7 +598,7 @@ GLenum glbBindAPI(const GLBapi* pAPI)
         return glbBindAPI(&tempAPI);
     }
 
-    /*<<set_global_api_from_struct>>*/
+/*<<set_global_api_from_struct>>*/
 
     return GL_NO_ERROR;
 }
