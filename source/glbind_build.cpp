@@ -1510,6 +1510,94 @@ glbResult glbBuildGenerateCode_C_Date(glbBuild &context, std::string &codeOut)
     return GLB_SUCCESS;
 }
 
+glbResult glbBuildGetOpenGLVersion(glbBuild &context, std::string &versionOut)
+{
+    // The version can be retrieved from the last "gl" feature section.
+    std::string versionStr;
+    for (auto feature : context.features) {
+        if (feature.api == "gl") {
+            versionStr = feature.number;
+        }
+    }
+
+    versionOut = versionStr;
+
+    return GLB_SUCCESS;
+}
+
+glbResult vkbBuildGenerateCode_C_OpenGLVersion(glbBuild &context, std::string &codeOut)
+{
+    std::string version;
+    glbResult result = glbBuildGetOpenGLVersion(context, version);
+    if (result != GLB_SUCCESS) {
+        return result;
+    }
+
+    codeOut += version;
+
+    return GLB_SUCCESS;
+}
+
+glbResult glbBuildGenerateCode_C_Revision(glbBuild &context, std::string &codeOut)
+{
+    // Rules for the revision number:
+    // 1) If the OpenGL version has changed, reset the revision to 0, otherwise increment by 1.
+    // 2) If glbind.h cannot be found, set to 0.
+    std::string revision;
+
+    size_t fileSize;
+    char* pFileData;
+    if (glbOpenAndReadTextFile("../../glbind.h", &fileSize, &pFileData) == GLB_SUCCESS) {
+        // We need to parse the previous version.
+        std::string prevVersionMajor;
+        std::string prevVersionMinor;
+        std::string prevVersionRevision;
+        const char* versionBeg = strstr((const char*)pFileData, "glbind - v");
+        if (versionBeg != NULL) {
+            versionBeg += strlen("glbind - v");
+
+            std::string currentOpenGLVersion;
+            glbResult result = glbBuildGetOpenGLVersion(context, currentOpenGLVersion);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+
+            const char* cursorBeg = versionBeg;
+            const char* cursorEnd = versionBeg;
+
+            cursorEnd = strstr(cursorBeg, ".");
+            prevVersionMajor = std::string(cursorBeg, cursorEnd-cursorBeg);
+            cursorBeg = cursorEnd + 1;
+
+            cursorEnd = strstr(cursorBeg, ".");
+            prevVersionMinor = std::string(cursorBeg, cursorEnd-cursorBeg);
+            cursorBeg = cursorEnd + 1;
+
+            cursorEnd = strstr(cursorBeg, " ");
+            prevVersionRevision = std::string(cursorBeg, cursorEnd-cursorBeg);
+            cursorBeg = cursorEnd + 1;
+
+            std::string previousOpenGLVersion = prevVersionMajor + "." + prevVersionMinor;
+            if (currentOpenGLVersion == previousOpenGLVersion) {
+                // OpenGL versions are the same, so increment.
+                revision = std::to_string(atoi(prevVersionRevision.c_str()) + 1);
+            } else {
+                // OpenGL versions are different, so reset.
+                revision = "0";
+            }
+        } else {
+            // Couldn't find the previous version.
+            revision = "0";
+        }
+    } else {
+        // vkbind.h was not found.
+        revision = "0";
+    }
+
+    codeOut += revision;
+    return GLB_SUCCESS;
+}
+
 glbResult glbBuildGenerateCode_C(glbBuild &context, const char* tag, std::string &codeOut)
 {
     if (tag == NULL) {
@@ -1532,7 +1620,12 @@ glbResult glbBuildGenerateCode_C(glbBuild &context, const char* tag, std::string
     if (strcmp(tag, "/*<<set_global_api_from_struct>>*/") == 0) {
         result = glbBuildGenerateCode_C_SetGlobalAPIFromStruct(context, codeOut);
     }
-
+    if (strcmp(tag, "<<opengl_version>>") == 0) {
+        result = vkbBuildGenerateCode_C_OpenGLVersion(context, codeOut);
+    }
+    if (strcmp(tag, "<<revision>>") == 0) {
+        result = glbBuildGenerateCode_C_Revision(context, codeOut);
+    }
     if (strcmp(tag, "<<date>>") == 0) {
         result = glbBuildGenerateCode_C_Date(context, codeOut);
     }
@@ -1560,10 +1653,8 @@ glbResult glbBuildGenerateOutputFile(glbBuild &context, const char* outputFilePa
         "/*<<opengl_funcpointers_decl_global:4>>*/",
         "/*<<init_current_context_api>>*/",
         "/*<<set_global_api_from_struct>>*/",
-#if 0
         "<<opengl_version>>",
         "<<revision>>",
-#endif
         "<<date>>",
     };
 
