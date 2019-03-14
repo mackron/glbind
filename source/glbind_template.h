@@ -174,6 +174,37 @@ Binds the function pointers in pAPI to global scope.
 */
 GLenum glbBindAPI(const GLBapi* pAPI);
 
+/* Platform-specific APIs. */
+#if defined(GLBIND_WGL)
+/*
+Retrieves the rendering context that was created on the first call to glbInit().
+*/
+HGLRC glbGetRC();
+
+/*
+Retrieves the pixel format that's being used by the rendering context that was created on the first call to glbInit().
+*/
+int glbGetPixelFormat();
+
+/*
+Retrieves the pixel format descriptor being used by the rendering context that was created on the first call to glbInit().
+*/
+PIXELFORMATDESCRIPTOR* glbGetPFD();
+#endif
+
+#if defined(GLBIND_GLX)
+/*
+Retrieves a reference to the global Display that was created with the first call to glbInit(). If the display was set
+in the config object, that Display will be returned.
+*/
+Display* glbGetDisplay();
+
+/*
+Retrieves the rendering context that was created on the first call to glbInit().
+*/
+GLXContext glbGetRC();
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -240,8 +271,8 @@ static GLBhandle g_glbOpenGLSO = NULL;
 HWND  glbind_DummyHWND = 0;
 HDC   glbind_DC   = 0;
 HGLRC glbind_RC   = 0;
-PIXELFORMATDESCRIPTOR glbind_DummyPFD;
-int glbind_DummyPixelFormat;
+PIXELFORMATDESCRIPTOR glbind_PFD;
+int glbind_PixelFormat;
 
 static LRESULT GLBIND_DummyWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -331,7 +362,7 @@ GLenum glbInit(GLBapi* pAPI)
     GLenum result;
 
     if (g_glbInitCount == 0) {
-        GLenum result = glbLoadOpenGLSO();
+        result = glbLoadOpenGLSO();
         if (result != GL_NO_ERROR) {
             return result;
         }
@@ -407,23 +438,23 @@ GLenum glbInit(GLBapi* pAPI)
     glbind_DummyHWND = CreateWindowExW(0, L"GLBIND_DummyHWND", L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
     glbind_DC   = GetDC(glbind_DummyHWND);
 
-    memset(&glbind_DummyPFD, 0, sizeof(glbind_DummyPFD));
-    glbind_DummyPFD.nSize        = sizeof(glbind_DummyPFD);
-    glbind_DummyPFD.nVersion     = 1;
-    glbind_DummyPFD.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    glbind_DummyPFD.iPixelType   = PFD_TYPE_RGBA;
-    glbind_DummyPFD.cStencilBits = 8;
-    glbind_DummyPFD.cDepthBits   = 24;
-    glbind_DummyPFD.cColorBits   = 32;
-    glbind_DummyPixelFormat = ChoosePixelFormat(glbind_DC, &glbind_DummyPFD);
-    if (glbind_DummyPixelFormat == 0) {
+    memset(&glbind_PFD, 0, sizeof(glbind_PFD));
+    glbind_PFD.nSize        = sizeof(glbind_PFD);
+    glbind_PFD.nVersion     = 1;
+    glbind_PFD.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    glbind_PFD.iPixelType   = PFD_TYPE_RGBA;
+    glbind_PFD.cStencilBits = 8;
+    glbind_PFD.cDepthBits   = 24;
+    glbind_PFD.cColorBits   = 32;
+    glbind_PixelFormat = ChoosePixelFormat(glbind_DC, &glbind_PFD);
+    if (glbind_PixelFormat == 0) {
         DestroyWindow(glbind_DummyHWND);
         glb_dlclose(g_glbOpenGLSO);
         g_glbOpenGLSO = NULL;
         return GL_INVALID_OPERATION;
     }
 
-    if (!SetPixelFormat(glbind_DC, glbind_DummyPixelFormat, &glbind_DummyPFD)) {
+    if (!SetPixelFormat(glbind_DC, glbind_PixelFormat, &glbind_PFD)) {
         DestroyWindow(glbind_DummyHWND);
         glb_dlclose(g_glbOpenGLSO);
         g_glbOpenGLSO = NULL;
@@ -693,6 +724,35 @@ GLenum glbBindAPI(const GLBapi* pAPI)
 
     return GL_NO_ERROR;
 }
+
+#if defined(GLBIND_WGL)
+HGLRC glbGetRC()
+{
+    return glbind_RC;
+}
+
+int glbGetPixelFormat()
+{
+    return glbind_PixelFormat;
+}
+
+PIXELFORMATDESCRIPTOR* glbGetPFD()
+{
+    return &glbind_PFD;
+}
+#endif
+
+#if defined(GLBIND_GLX)
+Display* glbGetDisplay()
+{
+    return glbind_Display;
+}
+
+GLXContext glbGetRC()
+{
+    return glbind_RC;
+}
+#endif
 
 #endif  /* GLBIND_IMPLEMENTATION */
 
