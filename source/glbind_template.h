@@ -116,6 +116,8 @@ some program wants to use them.
 #define GLAPI extern
 #endif
 
+
+
 /*<<opengl_main>>*/
 
 /*<<opengl_funcpointers_decl_global>>*/
@@ -124,6 +126,21 @@ typedef struct
 {
 /*<<opengl_funcpointers_decl_global:4>>*/
 } GLBapi;
+
+typedef struct
+{
+    GLboolean singleBuffered;
+#if defined(GLBIND_WGL)
+#endif
+#if defined(GLBIND_GLX)
+    Display* pDisplay;
+#endif
+} GLBconfig;
+
+/*
+Initializes a config object which can later be passed to glbInit() to configure the rendering context that's created by glbInit().
+*/
+GLBconfig glbConfigInit();
 
 /*
 Initializes glbind and attempts to load APIs statically.
@@ -140,8 +157,12 @@ time this is called it will bind the APIs to global scope.
 The internal rendering context can be used like normal. It will be created in double-buffered mode. You can also create your own
 context, but you may want to consider calling glbInitContextAPI() or glbInitCurrentContextAPI() after the fact to ensure function
 pointers are valid for that context.
+
+You can configure the internal rendering context by specifying a GLBconfig object. This can NULL in which case it will use
+defaults. Initialize the config object with glbConfigInit(). The default config creates a context with 32-bit color, 24-bit depth,
+8-bit stencil and double-buffered.
 */
-GLenum glbInit(GLBapi* pAPI);
+GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig);
 
 /*
 Loads context-specific APIs into the specified API object.
@@ -203,6 +224,16 @@ Display* glbGetDisplay();
 Retrieves the rendering context that was created on the first call to glbInit().
 */
 GLXContext glbGetRC();
+
+/*
+Retrieves the color map that was created on the first call to glbInit().
+*/
+Colormap glbGetColormap();
+
+/*
+Retrieves the framebuffer visual info that was created on the first call to glbInit().
+*/
+XVisualInfo* glbGetFBVisualInfo();
 #endif
 
 #ifdef __cplusplus
@@ -228,6 +259,16 @@ GLXContext glbGetRC();
 
 typedef void* GLBhandle;
 typedef void (* GLBproc)(void);
+
+void glbZeroMemory(void* p, size_t sz)
+{
+    size_t i;
+    for (i = 0; i < sz; ++i) {
+        ((GLbyte*)p)[i] = 0;
+    }
+}
+
+#define glbZeroObject(p) glbZeroMemory((p), sizeof(*(p)));
 
 GLBhandle glb_dlopen(const char* filename)
 {
@@ -357,7 +398,15 @@ GLenum glbLoadOpenGLSO()
     return GL_INVALID_OPERATION;
 }
 
-GLenum glbInit(GLBapi* pAPI)
+GLBconfig glbConfigInit()
+{
+    GLBconfig config;
+    glbZeroObject(&config);
+
+    return config;
+}
+
+GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 {
     GLenum result;
 
@@ -441,7 +490,7 @@ GLenum glbInit(GLBapi* pAPI)
     memset(&glbind_PFD, 0, sizeof(glbind_PFD));
     glbind_PFD.nSize        = sizeof(glbind_PFD);
     glbind_PFD.nVersion     = 1;
-    glbind_PFD.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    glbind_PFD.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | ((pConfig == NULL || pConfig->singleBuffered == GL_FALSE) ? PFD_DOUBLEBUFFER : 0);
     glbind_PFD.iPixelType   = PFD_TYPE_RGBA;
     glbind_PFD.cStencilBits = 8;
     glbind_PFD.cDepthBits   = 24;
@@ -481,16 +530,16 @@ GLenum glbInit(GLBapi* pAPI)
         GLX_ALPHA_SIZE,    8,
         GLX_DEPTH_SIZE,    24,
         GLX_STENCIL_SIZE,  8,
-        None,                   /* Reserved for GLX_DOUBLEBUFFER */
+        GLX_DOUBLEBUFFER,
         None, None
     };
 
-    /* TODO: Add support for single buffered context's. */
-    /*if (!isSingleBuffered) {*/
-        attribs[13] = GLX_DOUBLEBUFFER;
-    /*}*/
-
-    /* TODO: Add support for an application-defined display. */
+    if (pConfig != NULL) {
+        if (!pConfig->singleBuffered) {
+            attribs[13] = None;
+        }
+    }
+    
     glbind_OwnsDisplay = GL_TRUE;
     glbind_pDisplay = XOpenDisplay(NULL);
     if (glbind_pDisplay == NULL) {
@@ -651,10 +700,7 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
         return GL_INVALID_OPERATION;
     }
 
-    /* Just to avoid a memset() dependency. I wonder if a good compiler will optimize this... */
-    for (size_t i = 0; i < sizeof(*pAPI); ++i) {
-        ((GLbyte*)pAPI)[i] = 0;
-    }
+    glbZeroObject(pAPI);
 
 /*<<init_current_context_api>>*/
 
@@ -745,12 +791,22 @@ PIXELFORMATDESCRIPTOR* glbGetPFD()
 #if defined(GLBIND_GLX)
 Display* glbGetDisplay()
 {
-    return glbind_Display;
+    return glbind_pDisplay;
 }
 
 GLXContext glbGetRC()
 {
     return glbind_RC;
+}
+
+Colormap glbGetColormap()
+{
+    return glbind_Colormap;
+}
+
+XVisualInfo* glbGetFBVisualInfo()
+{
+    return glbind_pFBVisualInfo;
 }
 #endif
 
