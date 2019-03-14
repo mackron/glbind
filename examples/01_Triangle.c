@@ -3,23 +3,44 @@
 #define GLBIND_IMPLEMENTATION
 #include "../glbind.h"
 
-void Render(GLBapi* pGL)
+void Render()
 {
-    pGL->glClearColor(0.2f, 0.5f, 0.8f, 0);
-    pGL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glClearColor(0.2f, 0.5f, 0.8f, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    pGL->glBegin(GL_TRIANGLES);
+    glBegin(GL_TRIANGLES);
     {
-        pGL->glColor3f(1, 0, 0);
-        pGL->glVertex2f( 0.0f, +0.5f);
-        pGL->glColor3f(0, 1, 0);
-        pGL->glVertex2f(-0.5f, -0.5f);
-        pGL->glColor3f(0, 0, 1);
-        pGL->glVertex2f(+0.5f, -0.5f);
-        
+        glColor3f(1, 0, 0);
+        glVertex2f( 0.0f, +0.5f);
+        glColor3f(0, 1, 0);
+        glVertex2f(-0.5f, -0.5f);
+        glColor3f(0, 0, 1);
+        glVertex2f(+0.5f, -0.5f);
     }
-    pGL->glEnd();
+    glEnd();
 }
+
+#if defined(GLBIND_WGL)
+static LRESULT DefaultWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg)
+    {
+        case WM_CLOSE:
+        {
+            PostQuitMessage(0);
+        } break;
+
+        case WM_SIZE:
+        {
+            glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+        }
+
+        default: break;
+    }
+
+    return DefWindowProcA(hWnd, msg, wParam, lParam);
+}
+#endif
 
 int main(int argc, char** argv)
 {
@@ -34,6 +55,54 @@ int main(int argc, char** argv)
 
     /* Create the window and show something on the screen. */
     {
+#if defined(GLBIND_WGL)
+        WNDCLASSEXA wc;
+        DWORD dwExStyle = 0;
+        DWORD dwStyle = WS_OVERLAPPEDWINDOW;
+        HWND hWnd;
+        
+        ZeroMemory(&wc, sizeof(wc));
+        wc.cbSize        = sizeof(wc);
+        wc.cbWndExtra    = sizeof(void*);
+        wc.lpfnWndProc   = (WNDPROC)DefaultWindowProcWin32;
+        wc.lpszClassName = "GLBIND_01_Triangle";
+        wc.hCursor       = LoadCursorA(NULL, MAKEINTRESOURCEA(32512));
+        wc.style         = CS_OWNDC | CS_DBLCLKS;
+        if (!RegisterClassExA(&wc)) {
+            printf("Failed to register window class.\n");
+            return -1;
+        }
+        
+        hWnd = CreateWindowExA(dwExStyle, "GLBIND_01_Triangle", "glbind 01_Triangle", dwStyle, CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, NULL, NULL, NULL, NULL);
+        if (hWnd == NULL) {
+            printf("Failed to create Win32 window.\n");
+            return -1;
+        }
+
+        SetPixelFormat(GetDC(hWnd), glbGetPixelFormat(), glbGetPFD());
+
+        ShowWindow(hWnd, SW_SHOWNORMAL);
+
+        gl.wglMakeCurrent(GetDC(hWnd), glbGetRC()); /* Using the local API to avoid the need to link to OpenGL32.dll. */
+
+        for (;;) {
+            MSG msg;
+            while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+                if (msg.message == WM_QUIT) {
+                    return (int)msg.wParam;
+                }
+
+                TranslateMessage(&msg);
+                DispatchMessageA(&msg);
+            }
+
+            Render();
+            SwapBuffers(GetDC(hWnd));
+        }
+
+        DestroyWindow(hWnd);
+#endif
+
 #if defined(GLBIND_GLX)
         XSetWindowAttributes attr;
         Display* pDisplay;
@@ -74,7 +143,7 @@ int main(int argc, char** argv)
 
                 /* Handle events here. */
             } else {
-                Render(&gl);
+                Render();
                 gl.glXSwapBuffers(pDisplay, windowX11);
             }
         }
