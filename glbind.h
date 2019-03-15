@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.0 - 2019-03-14
+glbind - v4.6.1 - 2019-03-15
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19667,6 +19667,17 @@ XVisualInfo* glbGetFBVisualInfo();
 #ifdef __cplusplus
 }
 #endif
+
+/*
+Helper API for checking if an extension is supported based on the current rendering context.
+
+This checks cross-platform extensions, WGL extensions and GLX extensions (in that order).
+
+pAPI is optional. If non-null, this relevant APIs from this object will be used. Otherwise, whatever is bound to global
+scope will be used.
+*/
+GLboolean glbIsExtensionSupported(GLBapi* pAPI, const char* extensionName);
+
 #endif  /* GLBIND_H */
 
 
@@ -26682,6 +26693,145 @@ XVisualInfo* glbGetFBVisualInfo()
     return glbind_pFBVisualInfo;
 }
 #endif
+
+
+int glb_strcmp(const char* s1, const char* s2)
+{
+    while ((*s1) && (*s1 == *s2)) {
+        ++s1;
+        ++s2;
+    }
+
+    return (*(unsigned char*)s1 - *(unsigned char*)s2);
+}
+
+int glb_strncmp(const char* s1, const char* s2, size_t n)
+{
+    while (n && *s1 && (*s1 == *s2)) {
+        ++s1;
+        ++s2;
+        --n;
+    }
+
+    if (n == 0) {
+        return 0;
+    } else {
+        return (*(unsigned char*)s1 - *(unsigned char*)s2);
+    }
+}
+
+GLboolean glbIsExtensionInString(const char* ext, const char* str)
+{
+    const char* ext2beg;
+    const char* ext2end;
+
+    if (ext == NULL || str == NULL) {
+        return GL_FALSE;
+    }
+
+    ext2beg = str;
+    ext2end = ext2beg;
+
+    for (;;) {
+        while (ext2end[0] != ' ' && ext2end[0] != '\0') {
+            ext2end += 1;
+        }
+
+        if (glb_strncmp(ext, ext2beg, ext2end - ext2beg) == 0) {
+            return GL_TRUE;
+        }
+
+        /* Break if we've reached the end. Otherwise, just move to start fo the next extension. */
+        if (ext2end[0] == '\0') {
+            break;
+        } else {
+            ext2beg = ext2end + 1;
+            ext2end = ext2beg;
+        }
+    }
+
+    return GL_FALSE;
+}
+
+#if defined(GLBIND_WGL)
+GLboolean glbIsExtensionSupportedWGL(GLBapi* pAPI, const char* extensionName)
+{
+    PFNWGLGETEXTENSIONSSTRINGARBPROC _wglGetExtensionsStringARB = (pAPI != NULL) ? pAPI->wglGetExtensionsStringARB : wglGetExtensionsStringARB;
+    PFNWGLGETEXTENSIONSSTRINGEXTPROC _wglGetExtensionsStringEXT = (pAPI != NULL) ? pAPI->wglGetExtensionsStringEXT : wglGetExtensionsStringEXT;
+    PFNWGLGETCURRENTDCPROC           _wglGetCurrentDC           = (pAPI != NULL) ? pAPI->wglGetCurrentDC           : glbind_wglGetCurrentDC;
+
+    if (_wglGetExtensionsStringARB) {
+        return glbIsExtensionInString(extensionName, _wglGetExtensionsStringARB(_wglGetCurrentDC()));
+    }
+    if (_wglGetExtensionsStringEXT) {
+        return glbIsExtensionInString(extensionName, _wglGetExtensionsStringEXT());
+    }
+
+    return GL_FALSE;
+}
+#endif
+
+#if defined(GLBIND_GLX)
+GLboolean glbIsExtensionSupportedGLX(GLBapi* pAPI, const char* extensionName)
+{
+    PFNGLXQUERYEXTENSIONSSTRINGPROC _glXQueryExtensionsString = (pAPI != NULL) ? pAPI->glXQueryExtensionsString : glbind_glXQueryExtensionsString;
+
+    if (_glXQueryExtensionsString) {
+        return glbIsExtensionInString(extensionName, _glXQueryExtensionsString(glbGetDisplay(), XDefaultScreen(glbGetDisplay())));
+    }
+
+    return GL_FALSE;
+}
+#endif
+
+GLboolean glbIsExtensionSupported(GLBapi* pAPI, const char* extensionName)
+{
+    GLboolean isSupported = GL_FALSE;
+    PFNGLGETSTRINGIPROC  _glGetStringi  = (pAPI != NULL) ? pAPI->glGetStringi  : glGetStringi;
+    PFNGLGETSTRINGPROC   _glGetString   = (pAPI != NULL) ? pAPI->glGetString   : glGetString;
+    PFNGLGETINTEGERVPROC _glGetIntegerv = (pAPI != NULL) ? pAPI->glGetIntegerv : glGetIntegerv;
+
+    /* Try the new way first. */
+    if (_glGetStringi && _glGetIntegerv) {
+        GLint iExtension;
+        GLint supportedExtensionCount = 0;
+        _glGetIntegerv(GL_NUM_EXTENSIONS, &supportedExtensionCount);
+
+        for (iExtension = 0; iExtension < supportedExtensionCount; ++iExtension) {
+            const char* pSupportedExtension = (const char*)_glGetStringi(GL_EXTENSIONS, iExtension);
+            if (pSupportedExtension != NULL) {
+                if (glb_strcmp(pSupportedExtension, extensionName) == 0) {
+                    return GL_TRUE;
+                }
+            }
+        }
+
+        /* It's not a core extension. Check platform-specific extensions. */
+        isSupported = GL_FALSE;
+#if defined(GLBIND_WGL)
+        isSupported = glbIsExtensionSupportedWGL(pAPI, extensionName);
+#endif
+#if defined(GLBIND_GLX)
+        isSupported = glbIsExtensionSupportedGLX(pAPI, extensionName);
+#endif
+        return isSupported;
+    }
+
+    /* Fall back to old style. */
+    if (_glGetString) {
+        isSupported = glbIsExtensionInString(extensionName, (const char*)_glGetString(GL_EXTENSIONS));
+        if (!isSupported) {
+#if defined(GLBIND_WGL)
+            isSupported = glbIsExtensionSupportedWGL(pAPI, extensionName);
+#endif
+#if defined(GLBIND_GLX)
+            isSupported = glbIsExtensionSupportedGLX(pAPI, extensionName);
+#endif
+        }
+    }
+
+    return isSupported;
+}
 
 #endif  /* GLBIND_IMPLEMENTATION */
 
