@@ -33,7 +33,7 @@ int main()
 ```
 The example above binds everything to global scope and uses default settings for the internal rendering context. You
 can also initialize glbind like the code below.
-```
+```c
 GLBapi gl;
 GLBconfig config = glbConfigInit();
 config.singleBuffered = GL_TRUE;    /* Don't use double-buffering on the internal rendering context. */
