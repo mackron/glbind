@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.2 - 2019-03-27
+glbind - v4.6.3 - 2019-07-06
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19789,6 +19789,23 @@ PFNGLXGETCURRENTDRAWABLEPROC    glbind_glXGetCurrentDrawable;
 PFNGLXCHOOSEFBCONFIGPROC        glbind_glXChooseFBConfig;
 PFNGLXGETVISUALFROMFBCONFIGPROC glbind_glXGetVisualFromFBConfig;
 PFNGLXGETPROCADDRESSPROC        glbind_glXGetProcAddress;
+
+static GLBhandle g_glbX11SO = NULL;
+typedef Display* (* GLB_PFNXOPENDISPLAYPROC)   (char* pDisplayName);
+typedef int      (* GLB_PFNXCLOSEDISPLAYPROC)  (Display* pDisplay);
+typedef Window   (* GLB_PFNXCREATEWINDOWPROC)  (Display *pDisplay, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int class, Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
+typedef int      (* GLB_PFNXDESTROYWINDOWPROC) (Display* pDisplay, Window window);
+typedef Colormap (* GLB_PFNXCREATECOLORMAPPROC)(Display *pDisplay, Window window, Visual* pVisual, int alloc);
+typedef int      (* GLB_PFNXFREECOLORMAPPROC)  (Display *pDisplay, Colormap colormap);
+typedef int      (* GLB_PFNXDEFAULTSCREENPROC) (Display* pDisplay);
+
+GLB_PFNXOPENDISPLAYPROC    glbind_XOpenDisplay;
+GLB_PFNXCLOSEDISPLAYPROC   glbind_XCloseDisplay;
+GLB_PFNXCREATEWINDOWPROC   glbind_XCreateWindow;
+GLB_PFNXDESTROYWINDOWPROC  glbind_XDestroyWindow;
+GLB_PFNXCREATECOLORMAPPROC glbind_XCreateColormap;
+GLB_PFNXFREECOLORMAPPROC   glbind_XFreeColormap;
+GLB_PFNXDEFAULTSCREENPROC  glbind_XDefaultScreen;
 #endif
 
 GLBproc glbGetProcAddress(const char* name)
@@ -19801,7 +19818,7 @@ GLBproc glbGetProcAddress(const char* name)
 #endif
 #if defined(GLBIND_GLX)
     if (glbind_glXGetProcAddress) {
-        func = (GLBproc)glbind_glXGetProcAddress(name);
+        func = (GLBproc)glbind_glXGetProcAddress((const GLubyte*)name);
     }
 #endif
 
@@ -19814,6 +19831,7 @@ GLBproc glbGetProcAddress(const char* name)
 
 GLenum glbLoadOpenGLSO()
 {
+    GLenum result;
     size_t i;
 
     const char* openGLSONames[] = {
@@ -19826,15 +19844,51 @@ GLenum glbLoadOpenGLSO()
 #endif
     };
 
+    result = GL_INVALID_OPERATION;
     for (i = 0; i < sizeof(openGLSONames)/sizeof(openGLSONames[0]); ++i) {
         GLBhandle handle = glb_dlopen(openGLSONames[i]);
         if (handle != NULL) {
             g_glbOpenGLSO = handle;
-            return GL_NO_ERROR;
+            result = GL_NO_ERROR;
+            break;
         }
     }
 
-    return GL_INVALID_OPERATION;
+    if (result != GL_NO_ERROR) {
+        return result;
+    }
+
+    /* Runtime linking for platform-specific libraries. */
+    {
+    #if defined(_WIN32)
+        /* Win32 */
+    #elif defined(__APPLE_)
+        /* Apple */
+    #else
+        /* X11 */
+        const char* x11SONames[] = {
+            "libX11.so",
+            "libX11.so.6"
+        };
+
+        result = GL_INVALID_OPERATION;
+        for (i = 0; i < sizeof(openGLSONames)/sizeof(openGLSONames[0]); ++i) {
+            GLBhandle handle = glb_dlopen(x11SONames[i]);
+            if (handle != NULL) {
+                g_glbX11SO = handle;
+                result = GL_NO_ERROR;
+                break;
+            }
+        }
+    #endif
+    }
+
+    if (result != GL_NO_ERROR) {
+        glb_dlclose(g_glbOpenGLSO);
+        g_glbOpenGLSO = NULL;
+    }
+
+    return result;
 }
 
 GLBconfig glbConfigInit()
@@ -19901,6 +19955,28 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_glXChooseFBConfig        == NULL ||
             glbind_glXGetVisualFromFBConfig == NULL ||
             glbind_glXGetProcAddress        == NULL) {
+            glb_dlclose(g_glbOpenGLSO);
+            g_glbOpenGLSO = NULL;
+            return GL_INVALID_OPERATION;
+        }
+
+        glbind_XOpenDisplay    = (GLB_PFNXOPENDISPLAYPROC   )glb_dlsym(g_glbX11SO, "XOpenDisplay");
+        glbind_XCloseDisplay   = (GLB_PFNXCLOSEDISPLAYPROC  )glb_dlsym(g_glbX11SO, "XCloseDisplay");
+        glbind_XCreateWindow   = (GLB_PFNXCREATEWINDOWPROC  )glb_dlsym(g_glbX11SO, "XCreateWindow");
+        glbind_XDestroyWindow  = (GLB_PFNXDESTROYWINDOWPROC )glb_dlsym(g_glbX11SO, "XDestroyWindow");
+        glbind_XCreateColormap = (GLB_PFNXCREATECOLORMAPPROC)glb_dlsym(g_glbX11SO, "XCreateColormap");
+        glbind_XFreeColormap   = (GLB_PFNXFREECOLORMAPPROC  )glb_dlsym(g_glbX11SO, "XFreeColormap");
+        glbind_XDefaultScreen  = (GLB_PFNXDEFAULTSCREENPROC )glb_dlsym(g_glbX11SO, "XDefaultScreen");
+
+        if (glbind_XOpenDisplay    == NULL ||
+            glbind_XCloseDisplay   == NULL ||
+            glbind_XCreateWindow   == NULL ||
+            glbind_XDestroyWindow  == NULL ||
+            glbind_XCreateColormap == NULL ||
+            glbind_XFreeColormap   == NULL ||
+            glbind_XDefaultScreen  == NULL) {
+            glb_dlclose(g_glbX11SO);
+            g_glbX11SO = NULL;
             glb_dlclose(g_glbOpenGLSO);
             g_glbOpenGLSO = NULL;
             return GL_INVALID_OPERATION;
@@ -19980,7 +20056,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
     }
     
     glbind_OwnsDisplay = GL_TRUE;
-    glbind_pDisplay = XOpenDisplay(NULL);
+    glbind_pDisplay = glbind_XOpenDisplay(NULL);
     if (glbind_pDisplay == NULL) {
         glb_dlclose(g_glbOpenGLSO);
         g_glbOpenGLSO = NULL;
@@ -19994,7 +20070,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
         return GL_INVALID_OPERATION;
     }
 
-    glbind_Colormap = XCreateColormap(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, AllocNone);
+    glbind_Colormap = glbind_XCreateColormap(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, AllocNone);
 
     glbind_RC = glbind_glXCreateContext(glbind_pDisplay, glbind_pFBVisualInfo, NULL, GL_TRUE);
     if (glbind_RC == NULL) {
@@ -20009,7 +20085,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
     wa.border_pixel = 0;
 
     /* Window's can not have dimensions of 0 in X11. We stick with dimensions of 1. */
-    glbind_DummyWindow = XCreateWindow(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, InputOutput, glbind_pFBVisualInfo->visual, CWBorderPixel | CWColormap, &wa);
+    glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, InputOutput, glbind_pFBVisualInfo->visual, CWBorderPixel | CWColormap, &wa);
     if (glbind_DummyWindow == 0) {
         glb_dlclose(g_glbOpenGLSO);
         g_glbOpenGLSO = NULL;
@@ -20067,11 +20143,11 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 glbind_RC = 0;
             }
             if (glbind_DummyWindow) {
-                XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
+                glbind_XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
                 glbind_DummyWindow = 0;
             }
             if (glbind_pDisplay && glbind_OwnsDisplay) {
-                XCloseDisplay(glbind_pDisplay);
+                glbind_XCloseDisplay(glbind_pDisplay);
                 glbind_pDisplay    = 0;
                 glbind_OwnsDisplay = GL_FALSE;
             }
@@ -23424,11 +23500,11 @@ void glbUninit()
             glbind_RC = 0;
         }
         if (glbind_DummyWindow) {
-            XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
+            glbind_XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
             glbind_DummyWindow = 0;
         }
         if (glbind_pDisplay && glbind_OwnsDisplay) {
-            XCloseDisplay(glbind_pDisplay);
+            glbind_XCloseDisplay(glbind_pDisplay);
             glbind_pDisplay    = 0;
             glbind_OwnsDisplay = GL_FALSE;
         }
@@ -26777,7 +26853,7 @@ GLboolean glbIsExtensionSupportedGLX(GLBapi* pAPI, const char* extensionName)
     PFNGLXQUERYEXTENSIONSSTRINGPROC _glXQueryExtensionsString = (pAPI != NULL) ? pAPI->glXQueryExtensionsString : glbind_glXQueryExtensionsString;
 
     if (_glXQueryExtensionsString) {
-        return glbIsExtensionInString(extensionName, _glXQueryExtensionsString(glbGetDisplay(), XDefaultScreen(glbGetDisplay())));
+        return glbIsExtensionInString(extensionName, _glXQueryExtensionsString(glbGetDisplay(), glbind_XDefaultScreen(glbGetDisplay())));
     }
 
     return GL_FALSE;
