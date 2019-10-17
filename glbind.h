@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.3 - 2019-07-06
+glbind - v4.6.4 - 2019-10-17
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -6669,6 +6669,10 @@ typedef void (APIENTRYP PFNGLEGLIMAGETARGETTEXSTORAGEEXTPROC)(GLenum target, GLe
 typedef void (APIENTRYP PFNGLEGLIMAGETARGETTEXTURESTORAGEEXTPROC)(GLuint texture, GLeglImageOES image, const GLint* attrib_list);
 #endif /* GL_EXT_EGL_image_storage */
 
+#ifndef GL_EXT_EGL_sync
+#define GL_EXT_EGL_sync 1
+#endif /* GL_EXT_EGL_sync */
+
 #ifndef GL_EXT_abgr
 #define GL_EXT_abgr 1
 #define GL_ABGR_EXT 0x8000
@@ -7531,6 +7535,18 @@ typedef void (APIENTRYP PFNGLMULTIDRAWELEMENTSEXTPROC)(GLenum mode, const GLsize
 typedef void (APIENTRYP PFNGLSAMPLEMASKEXTPROC)(GLclampf value, GLboolean invert);
 typedef void (APIENTRYP PFNGLSAMPLEPATTERNEXTPROC)(GLenum pattern);
 #endif /* GL_EXT_multisample */
+
+#ifndef GL_EXT_multiview_tessellation_geometry_shader
+#define GL_EXT_multiview_tessellation_geometry_shader 1
+#endif /* GL_EXT_multiview_tessellation_geometry_shader */
+
+#ifndef GL_EXT_multiview_texture_multisample
+#define GL_EXT_multiview_texture_multisample 1
+#endif /* GL_EXT_multiview_texture_multisample */
+
+#ifndef GL_EXT_multiview_timer_query
+#define GL_EXT_multiview_timer_query 1
+#endif /* GL_EXT_multiview_timer_query */
 
 #ifndef GL_EXT_packed_depth_stencil
 #define GL_EXT_packed_depth_stencil 1
@@ -8907,6 +8923,22 @@ typedef void (APIENTRYP PFNGLGETNUNIFORMIVKHRPROC)(GLuint program, GLint locatio
 typedef void (APIENTRYP PFNGLGETNUNIFORMUIVKHRPROC)(GLuint program, GLint location, GLsizei bufSize, GLuint * params);
 #endif /* GL_KHR_robustness */
 
+#ifndef GL_KHR_shader_subgroup
+#define GL_KHR_shader_subgroup 1
+#define GL_SUBGROUP_SIZE_KHR 0x9532
+#define GL_SUBGROUP_SUPPORTED_STAGES_KHR 0x9533
+#define GL_SUBGROUP_SUPPORTED_FEATURES_KHR 0x9534
+#define GL_SUBGROUP_QUAD_ALL_STAGES_KHR 0x9535
+#define GL_SUBGROUP_FEATURE_BASIC_BIT_KHR 0x00000001
+#define GL_SUBGROUP_FEATURE_VOTE_BIT_KHR 0x00000002
+#define GL_SUBGROUP_FEATURE_ARITHMETIC_BIT_KHR 0x00000004
+#define GL_SUBGROUP_FEATURE_BALLOT_BIT_KHR 0x00000008
+#define GL_SUBGROUP_FEATURE_SHUFFLE_BIT_KHR 0x00000010
+#define GL_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT_KHR 0x00000020
+#define GL_SUBGROUP_FEATURE_CLUSTERED_BIT_KHR 0x00000040
+#define GL_SUBGROUP_FEATURE_QUAD_BIT_KHR 0x00000080
+#endif /* GL_KHR_shader_subgroup */
+
 #ifndef GL_KHR_texture_compression_astc_hdr
 #define GL_KHR_texture_compression_astc_hdr 1
 #define GL_COMPRESSED_RGBA_ASTC_4x4_KHR 0x93B0
@@ -8991,6 +9023,13 @@ typedef void (APIENTRYP PFNGLMAXSHADERCOMPILERTHREADSKHRPROC)(GLuint count);
 #define GL_TEXTURE_1D_STACK_BINDING_MESAX 0x875D
 #define GL_TEXTURE_2D_STACK_BINDING_MESAX 0x875E
 #endif /* GL_MESAX_texture_stack */
+
+#ifndef GL_MESA_framebuffer_flip_y
+#define GL_MESA_framebuffer_flip_y 1
+#define GL_FRAMEBUFFER_FLIP_Y_MESA 0x8BBB
+typedef void (APIENTRYP PFNGLFRAMEBUFFERPARAMETERIMESAPROC)(GLenum target, GLenum pname, GLint param);
+typedef void (APIENTRYP PFNGLGETFRAMEBUFFERPARAMETERIVMESAPROC)(GLenum target, GLenum pname, GLint * params);
+#endif /* GL_MESA_framebuffer_flip_y */
 
 #ifndef GL_MESA_pack_invert
 #define GL_MESA_pack_invert 1
@@ -9721,6 +9760,25 @@ typedef void (APIENTRYP PFNGLMULTICASTGETQUERYOBJECTI64VNVPROC)(GLuint gpu, GLui
 typedef void (APIENTRYP PFNGLMULTICASTGETQUERYOBJECTUI64VNVPROC)(GLuint gpu, GLuint id, GLenum pname, GLuint64 * params);
 #endif /* GL_NV_gpu_multicast */
 
+#ifndef GL_NVX_gpu_multicast2
+#define GL_NVX_gpu_multicast2 1
+#define GL_UPLOAD_GPU_MASK_NVX 0x954A
+typedef void (APIENTRYP PFNGLUPLOADGPUMASKNVXPROC)(GLbitfield mask);
+typedef void (APIENTRYP PFNGLMULTICASTVIEWPORTARRAYVNVXPROC)(GLuint gpu, GLuint first, GLsizei count, const GLfloat * v);
+typedef void (APIENTRYP PFNGLMULTICASTVIEWPORTPOSITIONWSCALENVXPROC)(GLuint gpu, GLuint index, GLfloat xcoeff, GLfloat ycoeff);
+typedef void (APIENTRYP PFNGLMULTICASTSCISSORARRAYVNVXPROC)(GLuint gpu, GLuint first, GLsizei count, const GLint * v);
+typedef GLuint (APIENTRYP PFNGLASYNCCOPYBUFFERSUBDATANVXPROC)(GLsizei waitSemaphoreCount, const GLuint * waitSemaphoreArray, const GLuint64 * fenceValueArray, GLuint readGpu, GLbitfield writeGpuMask, GLuint readBuffer, GLuint writeBuffer, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size, GLsizei signalSemaphoreCount, const GLuint * signalSemaphoreArray, const GLuint64 * signalValueArray);
+typedef GLuint (APIENTRYP PFNGLASYNCCOPYIMAGESUBDATANVXPROC)(GLsizei waitSemaphoreCount, const GLuint * waitSemaphoreArray, const GLuint64 * waitValueArray, GLuint srcGpu, GLbitfield dstGpuMask, GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth, GLsizei signalSemaphoreCount, const GLuint * signalSemaphoreArray, const GLuint64 * signalValueArray);
+#endif /* GL_NVX_gpu_multicast2 */
+
+#ifndef GL_NVX_progress_fence
+#define GL_NVX_progress_fence 1
+typedef GLuint (APIENTRYP PFNGLCREATEPROGRESSFENCENVXPROC)(void);
+typedef void (APIENTRYP PFNGLSIGNALSEMAPHOREUI64NVXPROC)(GLuint signalGpu, GLsizei fenceObjectCount, const GLuint * semaphoreArray, const GLuint64 * fenceValueArray);
+typedef void (APIENTRYP PFNGLWAITSEMAPHOREUI64NVXPROC)(GLuint waitGpu, GLsizei fenceObjectCount, const GLuint * semaphoreArray, const GLuint64 * fenceValueArray);
+typedef void (APIENTRYP PFNGLCLIENTWAITSEMAPHOREUI64NVXPROC)(GLsizei fenceObjectCount, const GLuint * semaphoreArray, const GLuint64 * fenceValueArray);
+#endif /* GL_NVX_progress_fence */
+
 #ifndef GL_NV_memory_attachment
 #define GL_NV_memory_attachment 1
 #define GL_ATTACHED_MEMORY_OBJECT_NV 0x95A4
@@ -10312,6 +10370,11 @@ typedef void (APIENTRYP PFNGLPROGRAMUNIFORMUI64VNVPROC)(GLuint program, GLint lo
 #ifndef GL_NV_shader_storage_buffer_object
 #define GL_NV_shader_storage_buffer_object 1
 #endif /* GL_NV_shader_storage_buffer_object */
+
+#ifndef GL_NV_shader_subgroup_partitioned
+#define GL_NV_shader_subgroup_partitioned 1
+#define GL_SUBGROUP_FEATURE_PARTITIONED_BIT_NV 0x00000100
+#endif /* GL_NV_shader_subgroup_partitioned */
 
 #ifndef GL_NV_shader_texture_footprint
 #define GL_NV_shader_texture_footprint 1
@@ -11912,6 +11975,10 @@ typedef void (APIENTRYP PFNGLREPLACEMENTCODEUITEXCOORD2FCOLOR4FNORMAL3FVERTEX3FV
 #define GL_FOG_SPECULAR_TEXTURE_WIN 0x80EC
 #endif /* GL_WIN_specular_fog */
 
+#ifndef GL_EXT_texture_shadow_lod
+#define GL_EXT_texture_shadow_lod 1
+#endif /* GL_EXT_texture_shadow_lod */
+
 #if defined(GLBIND_WGL)
 #ifndef WGL_3DFX_multisample
 #define WGL_3DFX_multisample 1
@@ -12523,6 +12590,15 @@ typedef INT64 (APIENTRYP PFNWGLSWAPLAYERBUFFERSMSCOMLPROC)(HDC hdc, INT fuPlanes
 typedef BOOL (APIENTRYP PFNWGLWAITFORMSCOMLPROC)(HDC hdc, INT64 target_msc, INT64 divisor, INT64 remainder, INT64 * ust, INT64 * msc, INT64 * sbc);
 typedef BOOL (APIENTRYP PFNWGLWAITFORSBCOMLPROC)(HDC hdc, INT64 target_sbc, INT64 * ust, INT64 * msc, INT64 * sbc);
 #endif /* WGL_OML_sync_control */
+
+#ifndef WGL_NV_multigpu_context
+#define WGL_NV_multigpu_context 1
+#define WGL_CONTEXT_MULTIGPU_ATTRIB_NV 0x20AA
+#define WGL_CONTEXT_MULTIGPU_ATTRIB_SINGLE_NV 0x20AB
+#define WGL_CONTEXT_MULTIGPU_ATTRIB_AFR_NV 0x20AC
+#define WGL_CONTEXT_MULTIGPU_ATTRIB_MULTICAST_NV 0x20AD
+#define WGL_CONTEXT_MULTIGPU_ATTRIB_MULTI_DISPLAY_MULTICAST_NV 0x20AE
+#endif /* WGL_NV_multigpu_context */
 #endif /* GLBIND_WGL */
 
 #if defined(GLBIND_GLX)
@@ -12633,6 +12709,14 @@ typedef __GLXextFuncPtr (APIENTRYP PFNGLXGETPROCADDRESSARBPROC)(const GLubyte * 
 #define GLX_EXT_buffer_age 1
 #define GLX_BACK_BUFFER_AGE_EXT 0x20F4
 #endif /* GLX_EXT_buffer_age */
+
+#ifndef GLX_EXT_context_priority
+#define GLX_EXT_context_priority 1
+#define GLX_CONTEXT_PRIORITY_LEVEL_EXT 0x3100
+#define GLX_CONTEXT_PRIORITY_HIGH_EXT 0x3101
+#define GLX_CONTEXT_PRIORITY_MEDIUM_EXT 0x3102
+#define GLX_CONTEXT_PRIORITY_LOW_EXT 0x3103
+#endif /* GLX_EXT_context_priority */
 
 #ifndef GLX_EXT_create_context_es_profile
 #define GLX_EXT_create_context_es_profile 1
@@ -13100,6 +13184,15 @@ typedef int (APIENTRYP PFNGLXCHANNELRECTSYNCSGIXPROC)(Display * display, int scr
 #define GLX_SUN_get_transparent_index 1
 typedef Status (APIENTRYP PFNGLXGETTRANSPARENTINDEXSUNPROC)(Display * dpy, Window overlay, Window underlay, unsigned long * pTransparentIndex);
 #endif /* GLX_SUN_get_transparent_index */
+
+#ifndef GLX_NV_multigpu_context
+#define GLX_NV_multigpu_context 1
+#define GLX_CONTEXT_MULTIGPU_ATTRIB_NV 0x20AA
+#define GLX_CONTEXT_MULTIGPU_ATTRIB_SINGLE_NV 0x20AB
+#define GLX_CONTEXT_MULTIGPU_ATTRIB_AFR_NV 0x20AC
+#define GLX_CONTEXT_MULTIGPU_ATTRIB_MULTICAST_NV 0x20AD
+#define GLX_CONTEXT_MULTIGPU_ATTRIB_MULTI_DISPLAY_MULTICAST_NV 0x20AE
+#endif /* GLX_NV_multigpu_context */
 #endif /* GLBIND_GLX */
 
 
@@ -15305,6 +15398,8 @@ PFNGLGETNUNIFORMFVKHRPROC glGetnUniformfvKHR;
 PFNGLGETNUNIFORMIVKHRPROC glGetnUniformivKHR;
 PFNGLGETNUNIFORMUIVKHRPROC glGetnUniformuivKHR;
 PFNGLMAXSHADERCOMPILERTHREADSKHRPROC glMaxShaderCompilerThreadsKHR;
+PFNGLFRAMEBUFFERPARAMETERIMESAPROC glFramebufferParameteriMESA;
+PFNGLGETFRAMEBUFFERPARAMETERIVMESAPROC glGetFramebufferParameterivMESA;
 PFNGLRESIZEBUFFERSMESAPROC glResizeBuffersMESA;
 PFNGLWINDOWPOS2DMESAPROC glWindowPos2dMESA;
 PFNGLWINDOWPOS2DVMESAPROC glWindowPos2dvMESA;
@@ -15498,6 +15593,16 @@ PFNGLMULTICASTGETQUERYOBJECTIVNVPROC glMulticastGetQueryObjectivNV;
 PFNGLMULTICASTGETQUERYOBJECTUIVNVPROC glMulticastGetQueryObjectuivNV;
 PFNGLMULTICASTGETQUERYOBJECTI64VNVPROC glMulticastGetQueryObjecti64vNV;
 PFNGLMULTICASTGETQUERYOBJECTUI64VNVPROC glMulticastGetQueryObjectui64vNV;
+PFNGLUPLOADGPUMASKNVXPROC glUploadGpuMaskNVX;
+PFNGLMULTICASTVIEWPORTARRAYVNVXPROC glMulticastViewportArrayvNVX;
+PFNGLMULTICASTVIEWPORTPOSITIONWSCALENVXPROC glMulticastViewportPositionWScaleNVX;
+PFNGLMULTICASTSCISSORARRAYVNVXPROC glMulticastScissorArrayvNVX;
+PFNGLASYNCCOPYBUFFERSUBDATANVXPROC glAsyncCopyBufferSubDataNVX;
+PFNGLASYNCCOPYIMAGESUBDATANVXPROC glAsyncCopyImageSubDataNVX;
+PFNGLCREATEPROGRESSFENCENVXPROC glCreateProgressFenceNVX;
+PFNGLSIGNALSEMAPHOREUI64NVXPROC glSignalSemaphoreui64NVX;
+PFNGLWAITSEMAPHOREUI64NVXPROC glWaitSemaphoreui64NVX;
+PFNGLCLIENTWAITSEMAPHOREUI64NVXPROC glClientWaitSemaphoreui64NVX;
 PFNGLGETMEMORYOBJECTDETACHEDRESOURCESUIVNVPROC glGetMemoryObjectDetachedResourcesuivNV;
 PFNGLRESETMEMORYOBJECTPARAMETERNVPROC glResetMemoryObjectParameterNV;
 PFNGLTEXATTACHMEMORYNVPROC glTexAttachMemoryNV;
@@ -18562,6 +18667,8 @@ typedef struct
     PFNGLGETNUNIFORMIVKHRPROC glGetnUniformivKHR;
     PFNGLGETNUNIFORMUIVKHRPROC glGetnUniformuivKHR;
     PFNGLMAXSHADERCOMPILERTHREADSKHRPROC glMaxShaderCompilerThreadsKHR;
+    PFNGLFRAMEBUFFERPARAMETERIMESAPROC glFramebufferParameteriMESA;
+    PFNGLGETFRAMEBUFFERPARAMETERIVMESAPROC glGetFramebufferParameterivMESA;
     PFNGLRESIZEBUFFERSMESAPROC glResizeBuffersMESA;
     PFNGLWINDOWPOS2DMESAPROC glWindowPos2dMESA;
     PFNGLWINDOWPOS2DVMESAPROC glWindowPos2dvMESA;
@@ -18755,6 +18862,16 @@ typedef struct
     PFNGLMULTICASTGETQUERYOBJECTUIVNVPROC glMulticastGetQueryObjectuivNV;
     PFNGLMULTICASTGETQUERYOBJECTI64VNVPROC glMulticastGetQueryObjecti64vNV;
     PFNGLMULTICASTGETQUERYOBJECTUI64VNVPROC glMulticastGetQueryObjectui64vNV;
+    PFNGLUPLOADGPUMASKNVXPROC glUploadGpuMaskNVX;
+    PFNGLMULTICASTVIEWPORTARRAYVNVXPROC glMulticastViewportArrayvNVX;
+    PFNGLMULTICASTVIEWPORTPOSITIONWSCALENVXPROC glMulticastViewportPositionWScaleNVX;
+    PFNGLMULTICASTSCISSORARRAYVNVXPROC glMulticastScissorArrayvNVX;
+    PFNGLASYNCCOPYBUFFERSUBDATANVXPROC glAsyncCopyBufferSubDataNVX;
+    PFNGLASYNCCOPYIMAGESUBDATANVXPROC glAsyncCopyImageSubDataNVX;
+    PFNGLCREATEPROGRESSFENCENVXPROC glCreateProgressFenceNVX;
+    PFNGLSIGNALSEMAPHOREUI64NVXPROC glSignalSemaphoreui64NVX;
+    PFNGLWAITSEMAPHOREUI64NVXPROC glWaitSemaphoreui64NVX;
+    PFNGLCLIENTWAITSEMAPHOREUI64NVXPROC glClientWaitSemaphoreui64NVX;
     PFNGLGETMEMORYOBJECTDETACHEDRESOURCESUIVNVPROC glGetMemoryObjectDetachedResourcesuivNV;
     PFNGLRESETMEMORYOBJECTPARAMETERNVPROC glResetMemoryObjectParameterNV;
     PFNGLTEXATTACHMEMORYNVPROC glTexAttachMemoryNV;
@@ -22480,6 +22597,8 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
     pAPI->glGetnUniformivKHR = (PFNGLGETNUNIFORMIVKHRPROC)glbGetProcAddress("glGetnUniformivKHR");
     pAPI->glGetnUniformuivKHR = (PFNGLGETNUNIFORMUIVKHRPROC)glbGetProcAddress("glGetnUniformuivKHR");
     pAPI->glMaxShaderCompilerThreadsKHR = (PFNGLMAXSHADERCOMPILERTHREADSKHRPROC)glbGetProcAddress("glMaxShaderCompilerThreadsKHR");
+    pAPI->glFramebufferParameteriMESA = (PFNGLFRAMEBUFFERPARAMETERIMESAPROC)glbGetProcAddress("glFramebufferParameteriMESA");
+    pAPI->glGetFramebufferParameterivMESA = (PFNGLGETFRAMEBUFFERPARAMETERIVMESAPROC)glbGetProcAddress("glGetFramebufferParameterivMESA");
     pAPI->glResizeBuffersMESA = (PFNGLRESIZEBUFFERSMESAPROC)glbGetProcAddress("glResizeBuffersMESA");
     pAPI->glWindowPos2dMESA = (PFNGLWINDOWPOS2DMESAPROC)glbGetProcAddress("glWindowPos2dMESA");
     pAPI->glWindowPos2dvMESA = (PFNGLWINDOWPOS2DVMESAPROC)glbGetProcAddress("glWindowPos2dvMESA");
@@ -22673,6 +22792,16 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
     pAPI->glMulticastGetQueryObjectuivNV = (PFNGLMULTICASTGETQUERYOBJECTUIVNVPROC)glbGetProcAddress("glMulticastGetQueryObjectuivNV");
     pAPI->glMulticastGetQueryObjecti64vNV = (PFNGLMULTICASTGETQUERYOBJECTI64VNVPROC)glbGetProcAddress("glMulticastGetQueryObjecti64vNV");
     pAPI->glMulticastGetQueryObjectui64vNV = (PFNGLMULTICASTGETQUERYOBJECTUI64VNVPROC)glbGetProcAddress("glMulticastGetQueryObjectui64vNV");
+    pAPI->glUploadGpuMaskNVX = (PFNGLUPLOADGPUMASKNVXPROC)glbGetProcAddress("glUploadGpuMaskNVX");
+    pAPI->glMulticastViewportArrayvNVX = (PFNGLMULTICASTVIEWPORTARRAYVNVXPROC)glbGetProcAddress("glMulticastViewportArrayvNVX");
+    pAPI->glMulticastViewportPositionWScaleNVX = (PFNGLMULTICASTVIEWPORTPOSITIONWSCALENVXPROC)glbGetProcAddress("glMulticastViewportPositionWScaleNVX");
+    pAPI->glMulticastScissorArrayvNVX = (PFNGLMULTICASTSCISSORARRAYVNVXPROC)glbGetProcAddress("glMulticastScissorArrayvNVX");
+    pAPI->glAsyncCopyBufferSubDataNVX = (PFNGLASYNCCOPYBUFFERSUBDATANVXPROC)glbGetProcAddress("glAsyncCopyBufferSubDataNVX");
+    pAPI->glAsyncCopyImageSubDataNVX = (PFNGLASYNCCOPYIMAGESUBDATANVXPROC)glbGetProcAddress("glAsyncCopyImageSubDataNVX");
+    pAPI->glCreateProgressFenceNVX = (PFNGLCREATEPROGRESSFENCENVXPROC)glbGetProcAddress("glCreateProgressFenceNVX");
+    pAPI->glSignalSemaphoreui64NVX = (PFNGLSIGNALSEMAPHOREUI64NVXPROC)glbGetProcAddress("glSignalSemaphoreui64NVX");
+    pAPI->glWaitSemaphoreui64NVX = (PFNGLWAITSEMAPHOREUI64NVXPROC)glbGetProcAddress("glWaitSemaphoreui64NVX");
+    pAPI->glClientWaitSemaphoreui64NVX = (PFNGLCLIENTWAITSEMAPHOREUI64NVXPROC)glbGetProcAddress("glClientWaitSemaphoreui64NVX");
     pAPI->glGetMemoryObjectDetachedResourcesuivNV = (PFNGLGETMEMORYOBJECTDETACHEDRESOURCESUIVNVPROC)glbGetProcAddress("glGetMemoryObjectDetachedResourcesuivNV");
     pAPI->glResetMemoryObjectParameterNV = (PFNGLRESETMEMORYOBJECTPARAMETERNVPROC)glbGetProcAddress("glResetMemoryObjectParameterNV");
     pAPI->glTexAttachMemoryNV = (PFNGLTEXATTACHMEMORYNVPROC)glbGetProcAddress("glTexAttachMemoryNV");
@@ -25736,6 +25865,8 @@ GLenum glbBindAPI(const GLBapi* pAPI)
     glGetnUniformivKHR = pAPI->glGetnUniformivKHR;
     glGetnUniformuivKHR = pAPI->glGetnUniformuivKHR;
     glMaxShaderCompilerThreadsKHR = pAPI->glMaxShaderCompilerThreadsKHR;
+    glFramebufferParameteriMESA = pAPI->glFramebufferParameteriMESA;
+    glGetFramebufferParameterivMESA = pAPI->glGetFramebufferParameterivMESA;
     glResizeBuffersMESA = pAPI->glResizeBuffersMESA;
     glWindowPos2dMESA = pAPI->glWindowPos2dMESA;
     glWindowPos2dvMESA = pAPI->glWindowPos2dvMESA;
@@ -25929,6 +26060,16 @@ GLenum glbBindAPI(const GLBapi* pAPI)
     glMulticastGetQueryObjectuivNV = pAPI->glMulticastGetQueryObjectuivNV;
     glMulticastGetQueryObjecti64vNV = pAPI->glMulticastGetQueryObjecti64vNV;
     glMulticastGetQueryObjectui64vNV = pAPI->glMulticastGetQueryObjectui64vNV;
+    glUploadGpuMaskNVX = pAPI->glUploadGpuMaskNVX;
+    glMulticastViewportArrayvNVX = pAPI->glMulticastViewportArrayvNVX;
+    glMulticastViewportPositionWScaleNVX = pAPI->glMulticastViewportPositionWScaleNVX;
+    glMulticastScissorArrayvNVX = pAPI->glMulticastScissorArrayvNVX;
+    glAsyncCopyBufferSubDataNVX = pAPI->glAsyncCopyBufferSubDataNVX;
+    glAsyncCopyImageSubDataNVX = pAPI->glAsyncCopyImageSubDataNVX;
+    glCreateProgressFenceNVX = pAPI->glCreateProgressFenceNVX;
+    glSignalSemaphoreui64NVX = pAPI->glSignalSemaphoreui64NVX;
+    glWaitSemaphoreui64NVX = pAPI->glWaitSemaphoreui64NVX;
+    glClientWaitSemaphoreui64NVX = pAPI->glClientWaitSemaphoreui64NVX;
     glGetMemoryObjectDetachedResourcesuivNV = pAPI->glGetMemoryObjectDetachedResourcesuivNV;
     glResetMemoryObjectParameterNV = pAPI->glResetMemoryObjectParameterNV;
     glTexAttachMemoryNV = pAPI->glTexAttachMemoryNV;
