@@ -1,0 +1,21 @@
+!!ARBvp1.0
+
+# Inputs
+ATTRIB iPos = vertex.attrib[0];
+ATTRIB iCol = vertex.attrib[1];
+
+# Outputs
+OUTPUT oPos = result.position;
+OUTPUT oCol = result.texcoord[0];
+
+# Uniforms
+PARAM mvp[4] = { program.local[0], program.local[1], program.local[2], program.local[3] };
+
+DP4 oPos.x, iPos, mvp[0];
+DP4 oPos.y, iPos, mvp[1];
+DP4 oPos.z, iPos, mvp[2];
+DP4 oPos.w, iPos, mvp[3];
+
+MOV oCol, iCol;
+
+END

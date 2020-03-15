@@ -1,0 +1,11 @@
+!!ARBfp1.0
+
+# Inputs
+ATTRIB iCol = fragment.texcoord[0];
+
+# Outputs
+OUTPUT oCol = result.color;
+
+MOV oCol, iCol;
+
+END
