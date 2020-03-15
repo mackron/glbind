@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #define GLBIND_IMPLEMENTATION
-#include "../glbind.h"
+#include "../../glbind.h"
 
 void Render()
 {
