@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /*
-The office OpenGL headers have a dependency on a header called khrplatform.h. From what I can see it's mainly just for sized types. Since glbind is a
+The official OpenGL headers have a dependency on a header called khrplatform.h. From what I can see it's mainly just for sized types. Since glbind is a
 single header, and that we can't just copy-and-paste the contents of khrplatform.h due to licensing, we need to do our own sized type declarations.
 */
 #include <stddef.h> /* For size_t. */
@@ -103,7 +103,7 @@ typedef float khronos_float_t;
 #endif
 
 /*
-The office OpenGL headers have traditionally defined their APIs with APIENTRY, APIENTRYP and GLAPI. I'm including these just in case
+The official OpenGL headers have traditionally defined their APIs with APIENTRY, APIENTRYP and GLAPI. I'm including these just in case
 some program wants to use them.
 */
 #ifndef APIENTRY
