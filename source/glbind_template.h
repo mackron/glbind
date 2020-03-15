@@ -167,7 +167,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig);
 /*
 Loads context-specific APIs into the specified API object.
 
-This this not bind these APIs to global scope. Use glbBindAPI() for this.
+This does not bind these APIs to global scope. Use glbBindAPI() for this.
 */
 #if defined(GLBIND_WGL)
 GLenum glbInitContextAPI(HDC dc, HGLRC rc, GLBapi* pAPI);
@@ -179,7 +179,7 @@ GLenum glbInitContextAPI(Display *dpy, GLXDrawable drawable, GLXContext rc, GLBa
 /*
 Loads context-specific APIs from the current context into the specified API object.
 
-This this not bind these APIs to global scope. Use glbBindAPI() for this.
+This does not bind these APIs to global scope. Use glbBindAPI() for this.
 */
 GLenum glbInitCurrentContextAPI(GLBapi* pAPI);
 

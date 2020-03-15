@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.4 - 2019-10-17
+glbind - v4.6.5 - 2020-03-15
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19712,7 +19712,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig);
 /*
 Loads context-specific APIs into the specified API object.
 
-This this not bind these APIs to global scope. Use glbBindAPI() for this.
+This does not bind these APIs to global scope. Use glbBindAPI() for this.
 */
 #if defined(GLBIND_WGL)
 GLenum glbInitContextAPI(HDC dc, HGLRC rc, GLBapi* pAPI);
@@ -19724,7 +19724,7 @@ GLenum glbInitContextAPI(Display *dpy, GLXDrawable drawable, GLXContext rc, GLBa
 /*
 Loads context-specific APIs from the current context into the specified API object.
 
-This this not bind these APIs to global scope. Use glbBindAPI() for this.
+This does not bind these APIs to global scope. Use glbBindAPI() for this.
 */
 GLenum glbInitCurrentContextAPI(GLBapi* pAPI);
 
