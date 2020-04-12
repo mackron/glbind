@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.7 - 2020-03-15
+glbind - v4.6.8 - 2020-04-13
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19682,6 +19682,7 @@ typedef struct
 {
     GLboolean singleBuffered;
 #if defined(GLBIND_WGL)
+    HWND hWnd;
 #endif
 #if defined(GLBIND_GLX)
     Display* pDisplay;
@@ -20034,12 +20035,12 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 
         /* Here is where we need to initialize some core APIs. We need these to initialize dummy objects and whatnot. */
 #if defined(GLBIND_WGL)
-        glbind_wglCreateContext         = (PFNWGLCREATECONTEXTPROC        )glb_dlsym(g_glbOpenGLSO, "wglCreateContext");
-        glbind_wglDeleteContext         = (PFNWGLDELETECONTEXTPROC        )glb_dlsym(g_glbOpenGLSO, "wglDeleteContext");
-        glbind_wglGetCurrentContext     = (PFNWGLGETCURRENTCONTEXTPROC    )glb_dlsym(g_glbOpenGLSO, "wglGetCurrentContext");
-        glbind_wglGetCurrentDC          = (PFNWGLGETCURRENTDCPROC         )glb_dlsym(g_glbOpenGLSO, "wglGetCurrentDC");
-        glbind_wglGetProcAddress        = (PFNWGLGETPROCADDRESSPROC       )glb_dlsym(g_glbOpenGLSO, "wglGetProcAddress");
-        glbind_wglMakeCurrent           = (PFNWGLMAKECURRENTPROC          )glb_dlsym(g_glbOpenGLSO, "wglMakeCurrent");
+        glbind_wglCreateContext         = (PFNWGLCREATECONTEXTPROC    )glb_dlsym(g_glbOpenGLSO, "wglCreateContext");
+        glbind_wglDeleteContext         = (PFNWGLDELETECONTEXTPROC    )glb_dlsym(g_glbOpenGLSO, "wglDeleteContext");
+        glbind_wglGetCurrentContext     = (PFNWGLGETCURRENTCONTEXTPROC)glb_dlsym(g_glbOpenGLSO, "wglGetCurrentContext");
+        glbind_wglGetCurrentDC          = (PFNWGLGETCURRENTDCPROC     )glb_dlsym(g_glbOpenGLSO, "wglGetCurrentDC");
+        glbind_wglGetProcAddress        = (PFNWGLGETPROCADDRESSPROC   )glb_dlsym(g_glbOpenGLSO, "wglGetProcAddress");
+        glbind_wglMakeCurrent           = (PFNWGLMAKECURRENTPROC      )glb_dlsym(g_glbOpenGLSO, "wglMakeCurrent");
 
         if (glbind_wglCreateContext     == NULL ||
             glbind_wglDeleteContext     == NULL ||
@@ -20108,112 +20109,123 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 
         /* Here is where we need to initialize our dummy objects so we can get a context and retrieve some API pointers. */
 #if defined(GLBIND_WGL)
-        WNDCLASSEXW dummyWC;
-        memset(&dummyWC, 0, sizeof(dummyWC));
-        dummyWC.cbSize        = sizeof(dummyWC);
-        dummyWC.lpfnWndProc   = (WNDPROC)GLBIND_DummyWindowProcWin32;
-        dummyWC.lpszClassName = L"GLBIND_DummyHWND";
-        dummyWC.style         = CS_OWNDC;
-        if (!RegisterClassExW(&dummyWC)) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
+        {
+            HWND hWnd = pConfig->hWnd;
+
+            /* Create a dummy window if we haven't passed in an explicit window. */
+            if (pConfig->hWnd == 0) {
+                WNDCLASSEXW dummyWC;
+                memset(&dummyWC, 0, sizeof(dummyWC));
+                dummyWC.cbSize        = sizeof(dummyWC);
+                dummyWC.lpfnWndProc   = (WNDPROC)GLBIND_DummyWindowProcWin32;
+                dummyWC.lpszClassName = L"GLBIND_DummyHWND";
+                dummyWC.style         = CS_OWNDC;
+                if (!RegisterClassExW(&dummyWC)) {
+                    glb_dlclose(g_glbOpenGLSO);
+                    g_glbOpenGLSO = NULL;
+                    return GL_INVALID_OPERATION;
+                }
+
+                hWnd = CreateWindowExW(0, L"GLBIND_DummyHWND", L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
+                glbind_DummyHWND = hWnd;
+            }
+
+            glbind_DC = GetDC(hWnd);
+
+            memset(&glbind_PFD, 0, sizeof(glbind_PFD));
+            glbind_PFD.nSize        = sizeof(glbind_PFD);
+            glbind_PFD.nVersion     = 1;
+            glbind_PFD.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | ((pConfig == NULL || pConfig->singleBuffered == GL_FALSE) ? PFD_DOUBLEBUFFER : 0);
+            glbind_PFD.iPixelType   = PFD_TYPE_RGBA;
+            glbind_PFD.cStencilBits = 8;
+            glbind_PFD.cDepthBits   = 24;
+            glbind_PFD.cColorBits   = 32;
+            glbind_PixelFormat = ChoosePixelFormat(glbind_DC, &glbind_PFD);
+            if (glbind_PixelFormat == 0) {
+                DestroyWindow(hWnd);
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            if (!SetPixelFormat(glbind_DC, glbind_PixelFormat, &glbind_PFD)) {
+                DestroyWindow(hWnd);
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            glbind_RC = glbind_wglCreateContext(glbind_DC);
+            if (glbind_RC == NULL) {
+                DestroyWindow(hWnd);
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            glbind_wglMakeCurrent(glbind_DC, glbind_RC);
         }
-
-        glbind_DummyHWND = CreateWindowExW(0, L"GLBIND_DummyHWND", L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
-        glbind_DC   = GetDC(glbind_DummyHWND);
-
-        memset(&glbind_PFD, 0, sizeof(glbind_PFD));
-        glbind_PFD.nSize        = sizeof(glbind_PFD);
-        glbind_PFD.nVersion     = 1;
-        glbind_PFD.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | ((pConfig == NULL || pConfig->singleBuffered == GL_FALSE) ? PFD_DOUBLEBUFFER : 0);
-        glbind_PFD.iPixelType   = PFD_TYPE_RGBA;
-        glbind_PFD.cStencilBits = 8;
-        glbind_PFD.cDepthBits   = 24;
-        glbind_PFD.cColorBits   = 32;
-        glbind_PixelFormat = ChoosePixelFormat(glbind_DC, &glbind_PFD);
-        if (glbind_PixelFormat == 0) {
-            DestroyWindow(glbind_DummyHWND);
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
-        }
-
-        if (!SetPixelFormat(glbind_DC, glbind_PixelFormat, &glbind_PFD)) {
-            DestroyWindow(glbind_DummyHWND);
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
-        }
-
-        glbind_RC = glbind_wglCreateContext(glbind_DC);
-        if (glbind_RC == NULL) {
-            DestroyWindow(glbind_DummyHWND);
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
-        }
-
-        glbind_wglMakeCurrent(glbind_DC, glbind_RC);
 #endif
 
 #if defined(GLBIND_GLX)
-        static int attribs[] = {
-            GLX_RGBA,
-            GLX_RED_SIZE,      8,
-            GLX_GREEN_SIZE,    8,
-            GLX_BLUE_SIZE,     8,
-            GLX_ALPHA_SIZE,    8,
-            GLX_DEPTH_SIZE,    24,
-            GLX_STENCIL_SIZE,  8,
-            GLX_DOUBLEBUFFER,
-            None, None
-        };
+        {
+            static int attribs[] = {
+                GLX_RGBA,
+                GLX_RED_SIZE,      8,
+                GLX_GREEN_SIZE,    8,
+                GLX_BLUE_SIZE,     8,
+                GLX_ALPHA_SIZE,    8,
+                GLX_DEPTH_SIZE,    24,
+                GLX_STENCIL_SIZE,  8,
+                GLX_DOUBLEBUFFER,
+                None, None
+            };
 
-        if (pConfig != NULL) {
-            if (!pConfig->singleBuffered) {
-                attribs[13] = None;
+            if (pConfig != NULL) {
+                if (!pConfig->singleBuffered) {
+                    attribs[13] = None;
+                }
             }
-        }
     
-        glbind_OwnsDisplay = GL_TRUE;
-        glbind_pDisplay = glbind_XOpenDisplay(NULL);
-        if (glbind_pDisplay == NULL) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
+            glbind_OwnsDisplay = GL_TRUE;
+            glbind_pDisplay = glbind_XOpenDisplay(NULL);
+            if (glbind_pDisplay == NULL) {
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, DefaultScreen(glbind_pDisplay), attribs);
+            if (glbind_pFBVisualInfo == NULL) {
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            glbind_Colormap = glbind_XCreateColormap(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, AllocNone);
+
+            glbind_RC = glbind_glXCreateContext(glbind_pDisplay, glbind_pFBVisualInfo, NULL, GL_TRUE);
+            if (glbind_RC == NULL) {
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            /* We cannot call any OpenGL APIs until a context is made current. In order to make a context current we will need a window. We just use a dummy window for this. */
+            XSetWindowAttributes wa;
+            wa.colormap = glbind_Colormap;
+            wa.border_pixel = 0;
+
+            /* Window's can not have dimensions of 0 in X11. We stick with dimensions of 1. */
+            glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, InputOutput, glbind_pFBVisualInfo->visual, CWBorderPixel | CWColormap, &wa);
+            if (glbind_DummyWindow == 0) {
+                glb_dlclose(g_glbOpenGLSO);
+                g_glbOpenGLSO = NULL;
+                return GL_INVALID_OPERATION;
+            }
+
+            glbind_glXMakeCurrent(glbind_pDisplay, glbind_DummyWindow, glbind_RC);
         }
-
-        glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, DefaultScreen(glbind_pDisplay), attribs);
-        if (glbind_pFBVisualInfo == NULL) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
-        }
-
-        glbind_Colormap = glbind_XCreateColormap(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, AllocNone);
-
-        glbind_RC = glbind_glXCreateContext(glbind_pDisplay, glbind_pFBVisualInfo, NULL, GL_TRUE);
-        if (glbind_RC == NULL) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
-        }
-
-        /* We cannot call any OpenGL APIs until a context is made current. In order to make a context current we will need a window. We just use a dummy window for this. */
-        XSetWindowAttributes wa;
-        wa.colormap = glbind_Colormap;
-        wa.border_pixel = 0;
-
-        /* Window's can not have dimensions of 0 in X11. We stick with dimensions of 1. */
-        glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, InputOutput, glbind_pFBVisualInfo->visual, CWBorderPixel | CWColormap, &wa);
-        if (glbind_DummyWindow == 0) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
-            return GL_INVALID_OPERATION;
-        }
-
-        glbind_glXMakeCurrent(glbind_pDisplay, glbind_DummyWindow, glbind_RC);
 #endif
     }
 
@@ -20255,8 +20267,8 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             if (glbind_DummyHWND) {
                 DestroyWindow(glbind_DummyHWND);
                 glbind_DummyHWND = 0;
-                glbind_DC   = 0;
             }
+            glbind_DC = 0;
 #endif
 #if defined(GLBIND_GLX)
             if (glbind_RC) {
@@ -23626,8 +23638,8 @@ void glbUninit()
         if (glbind_DummyHWND) {
             DestroyWindow(glbind_DummyHWND);
             glbind_DummyHWND = 0;
-            glbind_DC   = 0;
         }
+        glbind_DC = 0;
 #endif
 #if defined(GLBIND_GLX)
         if (glbind_RC) {
