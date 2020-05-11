@@ -559,10 +559,14 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
         /* Here is where we need to initialize our dummy objects so we can get a context and retrieve some API pointers. */
 #if defined(GLBIND_WGL)
         {
-            HWND hWnd = pConfig->hWnd;
+            HWND hWnd = NULL;
+
+            if (pConfig != NULL) {
+                hWnd = pConfig->hWnd;
+            }
 
             /* Create a dummy window if we haven't passed in an explicit window. */
-            if (pConfig->hWnd == 0) {
+            if (hWnd == NULL) {
                 WNDCLASSEXW dummyWC;
                 memset(&dummyWC, 0, sizeof(dummyWC));
                 dummyWC.cbSize        = sizeof(dummyWC);
