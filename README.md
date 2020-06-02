@@ -57,7 +57,7 @@ gl.glClearColor(0, 0, 0, 0);
 gl.glClear(GL_COLOR_BUFFER_BIT);
 ```
 Since OpenGL requires a rendering context in order to retrieve function pointers, it makes sense to give the client
-access to it so they can avoid wasting time and memory creating their own rendering context unnecessarily. Instead,
+access to it so they can avoid wasting time and memory creating their own rendering context unnecessarily. Therefore,
 glbind allows you to configure the internal rendering context and retrieve a handle to it so the application can
 make use of it.
 
