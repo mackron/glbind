@@ -18,7 +18,7 @@ static GLenum CreateShader(GLBexample* pExample, GLenum shaderTarget, const char
     glBindProgramARB(shaderTarget, shaderObject);
 
     /* Load and compile. */
-    glProgramStringARB(shaderTarget, GL_PROGRAM_FORMAT_ASCII_ARB, shaderStringLength, pShaderString);
+    glProgramStringARB(shaderTarget, GL_PROGRAM_FORMAT_ASCII_ARB, (GLsizei)shaderStringLength, pShaderString);
 
     /* Check for any errors. */
     glGetIntegerv(GL_PROGRAM_ERROR_POSITION_ARB, &shaderErrorPos);

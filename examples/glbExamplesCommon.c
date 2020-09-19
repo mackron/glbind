@@ -41,7 +41,7 @@ struct GLBexample
 #if defined(GLBIND_WGL)
 static LRESULT glbExample_DefaultWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    GLBexample* pExample = (GLBexample*)GetWindowLongPtrA(hWnd, GWL_USERDATA);
+    GLBexample* pExample = (GLBexample*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
     if (pExample != NULL) {
         switch (msg)
         {
@@ -95,7 +95,7 @@ static GLenum glbExampleInitWindow(GLBexample* pExample, GLsizei sizeX, GLsizei 
             return -1;
         }
 
-        SetWindowLongPtrA(pExample->win32.hWnd, GWL_USERDATA, (LONG_PTR)pExample);
+        SetWindowLongPtrA(pExample->win32.hWnd, GWLP_USERDATA, (LONG_PTR)pExample);
 
         SetPixelFormat(GetDC(pExample->win32.hWnd), glbGetPixelFormat(), glbGetPFD());
     }
