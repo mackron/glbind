@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.9 - 2020-05-11
+glbind - v4.6.10 - 2020-09-20
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -8237,6 +8237,18 @@ typedef void (APIENTRYP PFNGLTEXTURENORMALEXTPROC)(GLenum mode);
 #define GL_TEXTURE_SWIZZLE_RGBA_EXT 0x8E46
 #endif /* GL_EXT_texture_swizzle */
 
+#ifndef GL_NV_timeline_semaphore
+#define GL_NV_timeline_semaphore 1
+#define GL_TIMELINE_SEMAPHORE_VALUE_NV 0x9595
+#define GL_SEMAPHORE_TYPE_NV 0x95B3
+#define GL_SEMAPHORE_TYPE_BINARY_NV 0x95B4
+#define GL_SEMAPHORE_TYPE_TIMELINE_NV 0x95B5
+#define GL_MAX_TIMELINE_SEMAPHORE_VALUE_DIFFERENCE_NV 0x95B6
+typedef void (APIENTRYP PFNGLCREATESEMAPHORESNVPROC)(GLsizei n, GLuint * semaphores);
+typedef void (APIENTRYP PFNGLSEMAPHOREPARAMETERIVNVPROC)(GLuint semaphore, GLenum pname, const GLint * params);
+typedef void (APIENTRYP PFNGLGETSEMAPHOREPARAMETERIVNVPROC)(GLuint semaphore, GLenum pname, GLint * params);
+#endif /* GL_NV_timeline_semaphore */
+
 #ifndef GL_EXT_timer_query
 #define GL_EXT_timer_query 1
 #define GL_TIME_ELAPSED_EXT 0x88BF
@@ -9026,12 +9038,22 @@ typedef void (APIENTRYP PFNGLMAXSHADERCOMPILERTHREADSKHRPROC)(GLuint count);
 #define GL_TEXTURE_2D_STACK_BINDING_MESAX 0x875E
 #endif /* GL_MESAX_texture_stack */
 
+#ifndef GL_MESA_framebuffer_flip_x
+#define GL_MESA_framebuffer_flip_x 1
+#define GL_FRAMEBUFFER_FLIP_X_MESA 0x8BBC
+#endif /* GL_MESA_framebuffer_flip_x */
+
 #ifndef GL_MESA_framebuffer_flip_y
 #define GL_MESA_framebuffer_flip_y 1
 #define GL_FRAMEBUFFER_FLIP_Y_MESA 0x8BBB
 typedef void (APIENTRYP PFNGLFRAMEBUFFERPARAMETERIMESAPROC)(GLenum target, GLenum pname, GLint param);
 typedef void (APIENTRYP PFNGLGETFRAMEBUFFERPARAMETERIVMESAPROC)(GLenum target, GLenum pname, GLint * params);
 #endif /* GL_MESA_framebuffer_flip_y */
+
+#ifndef GL_MESA_framebuffer_swap_xy
+#define GL_MESA_framebuffer_swap_xy 1
+#define GL_FRAMEBUFFER_SWAP_XY_MESA 0x8BBD
+#endif /* GL_MESA_framebuffer_swap_xy */
 
 #ifndef GL_MESA_pack_invert
 #define GL_MESA_pack_invert 1
@@ -9800,6 +9822,14 @@ typedef void (APIENTRYP PFNGLBUFFERATTACHMEMORYNVPROC)(GLenum target, GLuint mem
 typedef void (APIENTRYP PFNGLTEXTUREATTACHMEMORYNVPROC)(GLuint texture, GLuint memory, GLuint64 offset);
 typedef void (APIENTRYP PFNGLNAMEDBUFFERATTACHMEMORYNVPROC)(GLuint buffer, GLuint memory, GLuint64 offset);
 #endif /* GL_NV_memory_attachment */
+
+#ifndef GL_NV_memory_object_sparse
+#define GL_NV_memory_object_sparse 1
+typedef void (APIENTRYP PFNGLBUFFERPAGECOMMITMENTMEMNVPROC)(GLenum target, GLintptr offset, GLsizeiptr size, GLuint memory, GLuint64 memOffset, GLboolean commit);
+typedef void (APIENTRYP PFNGLTEXPAGECOMMITMENTMEMNVPROC)(GLenum target, GLint layer, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset, GLboolean commit);
+typedef void (APIENTRYP PFNGLNAMEDBUFFERPAGECOMMITMENTMEMNVPROC)(GLuint buffer, GLintptr offset, GLsizeiptr size, GLuint memory, GLuint64 memOffset, GLboolean commit);
+typedef void (APIENTRYP PFNGLTEXTUREPAGECOMMITMENTMEMNVPROC)(GLuint texture, GLint layer, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset, GLboolean commit);
+#endif /* GL_NV_memory_object_sparse */
 
 #ifndef GL_NV_mesh_shader
 #define GL_NV_mesh_shader 1
@@ -15269,6 +15299,9 @@ PFNGLGENTEXTURESEXTPROC glGenTexturesEXT;
 PFNGLISTEXTUREEXTPROC glIsTextureEXT;
 PFNGLPRIORITIZETEXTURESEXTPROC glPrioritizeTexturesEXT;
 PFNGLTEXTURENORMALEXTPROC glTextureNormalEXT;
+PFNGLCREATESEMAPHORESNVPROC glCreateSemaphoresNV;
+PFNGLSEMAPHOREPARAMETERIVNVPROC glSemaphoreParameterivNV;
+PFNGLGETSEMAPHOREPARAMETERIVNVPROC glGetSemaphoreParameterivNV;
 PFNGLGETQUERYOBJECTI64VEXTPROC glGetQueryObjecti64vEXT;
 PFNGLGETQUERYOBJECTUI64VEXTPROC glGetQueryObjectui64vEXT;
 PFNGLBEGINTRANSFORMFEEDBACKEXTPROC glBeginTransformFeedbackEXT;
@@ -15613,6 +15646,10 @@ PFNGLTEXATTACHMEMORYNVPROC glTexAttachMemoryNV;
 PFNGLBUFFERATTACHMEMORYNVPROC glBufferAttachMemoryNV;
 PFNGLTEXTUREATTACHMEMORYNVPROC glTextureAttachMemoryNV;
 PFNGLNAMEDBUFFERATTACHMEMORYNVPROC glNamedBufferAttachMemoryNV;
+PFNGLBUFFERPAGECOMMITMENTMEMNVPROC glBufferPageCommitmentMemNV;
+PFNGLTEXPAGECOMMITMENTMEMNVPROC glTexPageCommitmentMemNV;
+PFNGLNAMEDBUFFERPAGECOMMITMENTMEMNVPROC glNamedBufferPageCommitmentMemNV;
+PFNGLTEXTUREPAGECOMMITMENTMEMNVPROC glTexturePageCommitmentMemNV;
 PFNGLDRAWMESHTASKSNVPROC glDrawMeshTasksNV;
 PFNGLDRAWMESHTASKSINDIRECTNVPROC glDrawMeshTasksIndirectNV;
 PFNGLMULTIDRAWMESHTASKSINDIRECTNVPROC glMultiDrawMeshTasksIndirectNV;
@@ -18540,6 +18577,9 @@ typedef struct
     PFNGLISTEXTUREEXTPROC glIsTextureEXT;
     PFNGLPRIORITIZETEXTURESEXTPROC glPrioritizeTexturesEXT;
     PFNGLTEXTURENORMALEXTPROC glTextureNormalEXT;
+    PFNGLCREATESEMAPHORESNVPROC glCreateSemaphoresNV;
+    PFNGLSEMAPHOREPARAMETERIVNVPROC glSemaphoreParameterivNV;
+    PFNGLGETSEMAPHOREPARAMETERIVNVPROC glGetSemaphoreParameterivNV;
     PFNGLGETQUERYOBJECTI64VEXTPROC glGetQueryObjecti64vEXT;
     PFNGLGETQUERYOBJECTUI64VEXTPROC glGetQueryObjectui64vEXT;
     PFNGLBEGINTRANSFORMFEEDBACKEXTPROC glBeginTransformFeedbackEXT;
@@ -18884,6 +18924,10 @@ typedef struct
     PFNGLBUFFERATTACHMEMORYNVPROC glBufferAttachMemoryNV;
     PFNGLTEXTUREATTACHMEMORYNVPROC glTextureAttachMemoryNV;
     PFNGLNAMEDBUFFERATTACHMEMORYNVPROC glNamedBufferAttachMemoryNV;
+    PFNGLBUFFERPAGECOMMITMENTMEMNVPROC glBufferPageCommitmentMemNV;
+    PFNGLTEXPAGECOMMITMENTMEMNVPROC glTexPageCommitmentMemNV;
+    PFNGLNAMEDBUFFERPAGECOMMITMENTMEMNVPROC glNamedBufferPageCommitmentMemNV;
+    PFNGLTEXTUREPAGECOMMITMENTMEMNVPROC glTexturePageCommitmentMemNV;
     PFNGLDRAWMESHTASKSNVPROC glDrawMeshTasksNV;
     PFNGLDRAWMESHTASKSINDIRECTNVPROC glDrawMeshTasksIndirectNV;
     PFNGLMULTIDRAWMESHTASKSINDIRECTNVPROC glMultiDrawMeshTasksIndirectNV;
@@ -22486,6 +22530,9 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
     pAPI->glIsTextureEXT = (PFNGLISTEXTUREEXTPROC)glbGetProcAddress("glIsTextureEXT");
     pAPI->glPrioritizeTexturesEXT = (PFNGLPRIORITIZETEXTURESEXTPROC)glbGetProcAddress("glPrioritizeTexturesEXT");
     pAPI->glTextureNormalEXT = (PFNGLTEXTURENORMALEXTPROC)glbGetProcAddress("glTextureNormalEXT");
+    pAPI->glCreateSemaphoresNV = (PFNGLCREATESEMAPHORESNVPROC)glbGetProcAddress("glCreateSemaphoresNV");
+    pAPI->glSemaphoreParameterivNV = (PFNGLSEMAPHOREPARAMETERIVNVPROC)glbGetProcAddress("glSemaphoreParameterivNV");
+    pAPI->glGetSemaphoreParameterivNV = (PFNGLGETSEMAPHOREPARAMETERIVNVPROC)glbGetProcAddress("glGetSemaphoreParameterivNV");
     pAPI->glGetQueryObjecti64vEXT = (PFNGLGETQUERYOBJECTI64VEXTPROC)glbGetProcAddress("glGetQueryObjecti64vEXT");
     pAPI->glGetQueryObjectui64vEXT = (PFNGLGETQUERYOBJECTUI64VEXTPROC)glbGetProcAddress("glGetQueryObjectui64vEXT");
     pAPI->glBeginTransformFeedbackEXT = (PFNGLBEGINTRANSFORMFEEDBACKEXTPROC)glbGetProcAddress("glBeginTransformFeedbackEXT");
@@ -22830,6 +22877,10 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
     pAPI->glBufferAttachMemoryNV = (PFNGLBUFFERATTACHMEMORYNVPROC)glbGetProcAddress("glBufferAttachMemoryNV");
     pAPI->glTextureAttachMemoryNV = (PFNGLTEXTUREATTACHMEMORYNVPROC)glbGetProcAddress("glTextureAttachMemoryNV");
     pAPI->glNamedBufferAttachMemoryNV = (PFNGLNAMEDBUFFERATTACHMEMORYNVPROC)glbGetProcAddress("glNamedBufferAttachMemoryNV");
+    pAPI->glBufferPageCommitmentMemNV = (PFNGLBUFFERPAGECOMMITMENTMEMNVPROC)glbGetProcAddress("glBufferPageCommitmentMemNV");
+    pAPI->glTexPageCommitmentMemNV = (PFNGLTEXPAGECOMMITMENTMEMNVPROC)glbGetProcAddress("glTexPageCommitmentMemNV");
+    pAPI->glNamedBufferPageCommitmentMemNV = (PFNGLNAMEDBUFFERPAGECOMMITMENTMEMNVPROC)glbGetProcAddress("glNamedBufferPageCommitmentMemNV");
+    pAPI->glTexturePageCommitmentMemNV = (PFNGLTEXTUREPAGECOMMITMENTMEMNVPROC)glbGetProcAddress("glTexturePageCommitmentMemNV");
     pAPI->glDrawMeshTasksNV = (PFNGLDRAWMESHTASKSNVPROC)glbGetProcAddress("glDrawMeshTasksNV");
     pAPI->glDrawMeshTasksIndirectNV = (PFNGLDRAWMESHTASKSINDIRECTNVPROC)glbGetProcAddress("glDrawMeshTasksIndirectNV");
     pAPI->glMultiDrawMeshTasksIndirectNV = (PFNGLMULTIDRAWMESHTASKSINDIRECTNVPROC)glbGetProcAddress("glMultiDrawMeshTasksIndirectNV");
@@ -25756,6 +25807,9 @@ GLenum glbBindAPI(const GLBapi* pAPI)
     glIsTextureEXT = pAPI->glIsTextureEXT;
     glPrioritizeTexturesEXT = pAPI->glPrioritizeTexturesEXT;
     glTextureNormalEXT = pAPI->glTextureNormalEXT;
+    glCreateSemaphoresNV = pAPI->glCreateSemaphoresNV;
+    glSemaphoreParameterivNV = pAPI->glSemaphoreParameterivNV;
+    glGetSemaphoreParameterivNV = pAPI->glGetSemaphoreParameterivNV;
     glGetQueryObjecti64vEXT = pAPI->glGetQueryObjecti64vEXT;
     glGetQueryObjectui64vEXT = pAPI->glGetQueryObjectui64vEXT;
     glBeginTransformFeedbackEXT = pAPI->glBeginTransformFeedbackEXT;
@@ -26100,6 +26154,10 @@ GLenum glbBindAPI(const GLBapi* pAPI)
     glBufferAttachMemoryNV = pAPI->glBufferAttachMemoryNV;
     glTextureAttachMemoryNV = pAPI->glTextureAttachMemoryNV;
     glNamedBufferAttachMemoryNV = pAPI->glNamedBufferAttachMemoryNV;
+    glBufferPageCommitmentMemNV = pAPI->glBufferPageCommitmentMemNV;
+    glTexPageCommitmentMemNV = pAPI->glTexPageCommitmentMemNV;
+    glNamedBufferPageCommitmentMemNV = pAPI->glNamedBufferPageCommitmentMemNV;
+    glTexturePageCommitmentMemNV = pAPI->glTexturePageCommitmentMemNV;
     glDrawMeshTasksNV = pAPI->glDrawMeshTasksNV;
     glDrawMeshTasksIndirectNV = pAPI->glDrawMeshTasksIndirectNV;
     glMultiDrawMeshTasksIndirectNV = pAPI->glMultiDrawMeshTasksIndirectNV;
