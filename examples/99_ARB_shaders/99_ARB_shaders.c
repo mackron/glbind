@@ -10,12 +10,11 @@ const void* vfs_map_file(const char* pFilePath, size_t* pFileSizeInBytes);
 
 static GLenum CreateShader(GLBexample* pExample, GLenum shaderTarget, const char* pShaderString, size_t shaderStringLength, GLuint* pShaderObject)
 {
-    GLuint shaderObject;
     GLint shaderErrorPos;
 
     /* Generate shader object. */
-    glGenProgramsARB(1, &shaderObject);
-    glBindProgramARB(shaderTarget, shaderObject);
+    glGenProgramsARB(1, pShaderObject);
+    glBindProgramARB(shaderTarget, *pShaderObject);
 
     /* Load and compile. */
     glProgramStringARB(shaderTarget, GL_PROGRAM_FORMAT_ASCII_ARB, (GLsizei)shaderStringLength, pShaderString);
@@ -95,6 +94,10 @@ void onDraw(GLBexample* pExample)
 {
     glClearColor(0.2f, 0.5f, 0.8f, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    /* Not strictly necessary in this example because they're already bound from the initialization stage, but explicitly bind the shaders first. */
+    glBindProgramARB(GL_VERTEX_PROGRAM_ARB,   g_VertShader);
+    glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, g_FragShader);
 
     /* We can now set the MVP matrix. In this example we always use the identity matrix, but in a real program you would make this a variable. */
     glProgramLocalParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 1, 0, 0, 0);
