@@ -1,8 +1,14 @@
-glbind
-======
-glbind is a single file OpenGL API loader. It includes a full implementation of the OpenGL headers (auto-generated
-from the OpenGL spec) so there's no need for the offical headers or SDK. Unlike the official headers, the
-platform-specific sections are all contained within the same file.
+<h4 align="center">A single file OpenGL header and API loader.</h4>
+
+<p align="center">
+    <a href="https://discord.gg/9vpqbjU"><img src="https://img.shields.io/discord/712952679415939085?label=discord&logo=discord" alt="discord"></a>
+    <a href="https://twitter.com/mackron"><img src="https://img.shields.io/twitter/follow/mackron?style=flat&label=twitter&color=1da1f2&logo=twitter" alt="twitter"></a>
+</p>
+
+glbind includes a full implementation of the OpenGL headers (auto-generated from the OpenGL spec) so there's no need
+for the offical headers or SDK. Unlike the official headers, the platform-specific sections are all contained within
+the same file.
+
 
 Usage
 =====
