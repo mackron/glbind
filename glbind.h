@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.10 - 2020-09-20
+glbind - v4.6.11 - 2021-04-09
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -23,6 +23,7 @@ extern "C" {
 The official OpenGL headers have a dependency on a header called khrplatform.h. From what I can see it's mainly just for sized types. Since glbind is a
 single header, and that we can't just copy-and-paste the contents of khrplatform.h due to licensing, we need to do our own sized type declarations.
 */
+#ifndef __khrplatform_h_
 #include <stddef.h> /* For size_t. */
 #ifdef _MSC_VER
     #if defined(__clang__)
@@ -92,6 +93,7 @@ single header, and that we can't just copy-and-paste the contents of khrplatform
     #endif
 #endif
 typedef float khronos_float_t;
+#endif  /* __khrplatform_h_ */
 
 /* Platform headers. */
 #if defined(GLBIND_WGL)
