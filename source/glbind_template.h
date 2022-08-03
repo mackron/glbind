@@ -368,7 +368,7 @@ PFNGLXGETPROCADDRESSPROC        glbind_glXGetProcAddress;
 static GLBhandle g_glbX11SO = NULL;
 typedef Display* (* GLB_PFNXOPENDISPLAYPROC)   (char* pDisplayName);
 typedef int      (* GLB_PFNXCLOSEDISPLAYPROC)  (Display* pDisplay);
-typedef Window   (* GLB_PFNXCREATEWINDOWPROC)  (Display *pDisplay, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int class, Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
+typedef Window   (* GLB_PFNXCREATEWINDOWPROC)  (Display *pDisplay, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int windowClass, Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
 typedef int      (* GLB_PFNXDESTROYWINDOWPROC) (Display* pDisplay, Window window);
 typedef Colormap (* GLB_PFNXCREATECOLORMAPPROC)(Display *pDisplay, Window window, Visual* pVisual, int alloc);
 typedef int      (* GLB_PFNXFREECOLORMAPPROC)  (Display *pDisplay, Colormap colormap);

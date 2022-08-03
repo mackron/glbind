@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.11 - 2021-04-09
+glbind - v4.6.12 - 2022-08-04
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19963,7 +19963,7 @@ PFNGLXGETPROCADDRESSPROC        glbind_glXGetProcAddress;
 static GLBhandle g_glbX11SO = NULL;
 typedef Display* (* GLB_PFNXOPENDISPLAYPROC)   (char* pDisplayName);
 typedef int      (* GLB_PFNXCLOSEDISPLAYPROC)  (Display* pDisplay);
-typedef Window   (* GLB_PFNXCREATEWINDOWPROC)  (Display *pDisplay, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int class, Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
+typedef Window   (* GLB_PFNXCREATEWINDOWPROC)  (Display *pDisplay, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int windowClass, Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
 typedef int      (* GLB_PFNXDESTROYWINDOWPROC) (Display* pDisplay, Window window);
 typedef Colormap (* GLB_PFNXCREATECOLORMAPPROC)(Display *pDisplay, Window window, Visual* pVisual, int alloc);
 typedef int      (* GLB_PFNXFREECOLORMAPPROC)  (Display *pDisplay, Colormap colormap);
