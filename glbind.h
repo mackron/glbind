@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.12 - 2022-08-04
+glbind - v4.6.13 - 2023-03-10
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19945,6 +19945,11 @@ PFNWGLGETCURRENTCONTEXTPROC     glbind_wglGetCurrentContext;
 PFNWGLGETCURRENTDCPROC          glbind_wglGetCurrentDC;
 PFNWGLGETPROCADDRESSPROC        glbind_wglGetProcAddress;
 PFNWGLMAKECURRENTPROC           glbind_wglMakeCurrent;
+
+static GLBhandle g_glbGdi32DLL  = NULL;
+PFNCHOOSEPIXELFORMATPROC glbind_ChoosePixelFormat;
+PFNSETPIXELFORMATPROC    glbind_SetPixelFormat;
+PFNSWAPBUFFERSPROC       glbind_SwapBuffers;
 #endif
 #if defined(GLBIND_GLX)
 PFNGLXCHOOSEVISUALPROC          glbind_glXChooseVisual;
@@ -20032,6 +20037,12 @@ GLenum glbLoadOpenGLSO()
     {
     #if defined(_WIN32)
         /* Win32 */
+        g_glbGdi32DLL = glb_dlopen("gdi32.dll");
+        if (g_glbGdi32DLL == NULL) {
+            glb_dlclose(g_glbOpenGLSO);
+            g_glbOpenGLSO = NULL;
+            return GL_INVALID_OPERATION;
+        }
     #elif defined(__APPLE_)
         /* Apple */
     #else
@@ -20059,6 +20070,31 @@ GLenum glbLoadOpenGLSO()
     }
 
     return result;
+}
+
+void glbUnloadOpenGLSO()
+{
+    if (g_glbOpenGLSO == NULL) {
+        return;
+    }
+
+    /* Unload platform-specific libraries. */
+    {
+    #if defined(_WIN32)
+        /* Win32 */
+        glb_dlclose(g_glbGdi32DLL);
+        g_glbGdi32DLL = NULL;
+    #elif defined(__APPLE_)
+        /* Apple */
+    #else
+        /* X11 */
+        glb_dlclose(g_glbX11SO);
+        g_glbX11SO = NULL;
+    #endif
+    }
+
+    glb_dlclose(g_glbOpenGLSO);
+    g_glbOpenGLSO = NULL;
 }
 
 GLBconfig glbConfigInit()
@@ -20094,8 +20130,18 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_wglGetCurrentDC      == NULL ||
             glbind_wglGetProcAddress    == NULL ||
             glbind_wglMakeCurrent       == NULL) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
+            glbUnloadOpenGLSO();
+            return GL_INVALID_OPERATION;
+        }
+
+        glbind_ChoosePixelFormat        = (PFNCHOOSEPIXELFORMATPROC)glb_dlsym(g_glbGdi32DLL, "ChoosePixelFormat");
+        glbind_SetPixelFormat           = (PFNSETPIXELFORMATPROC   )glb_dlsym(g_glbGdi32DLL, "SetPixelFormat");
+        glbind_SwapBuffers              = (PFNSWAPBUFFERSPROC      )glb_dlsym(g_glbGdi32DLL, "SwapBuffers");
+        
+        if (glbind_ChoosePixelFormat    == NULL ||
+            glbind_SetPixelFormat       == NULL ||
+            glbind_SwapBuffers          == NULL) {
+            glbUnloadOpenGLSO();
             return GL_INVALID_OPERATION;
         }
 #endif
@@ -20125,8 +20171,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_glXChooseFBConfig        == NULL ||
             glbind_glXGetVisualFromFBConfig == NULL ||
             glbind_glXGetProcAddress        == NULL) {
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
+            glbUnloadOpenGLSO();
             return GL_INVALID_OPERATION;
         }
 
@@ -20145,10 +20190,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_XCreateColormap == NULL ||
             glbind_XFreeColormap   == NULL ||
             glbind_XDefaultScreen  == NULL) {
-            glb_dlclose(g_glbX11SO);
-            g_glbX11SO = NULL;
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
+            glbUnloadOpenGLSO();
             return GL_INVALID_OPERATION;
         }
 #endif
@@ -20171,8 +20213,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 dummyWC.lpszClassName = L"GLBIND_DummyHWND";
                 dummyWC.style         = CS_OWNDC;
                 if (!RegisterClassExW(&dummyWC)) {
-                    glb_dlclose(g_glbOpenGLSO);
-                    g_glbOpenGLSO = NULL;
+                    glbUnloadOpenGLSO();
                     return GL_INVALID_OPERATION;
                 }
 
@@ -20190,26 +20231,23 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_PFD.cStencilBits = 8;
             glbind_PFD.cDepthBits   = 24;
             glbind_PFD.cColorBits   = 32;
-            glbind_PixelFormat = ChoosePixelFormat(glbind_DC, &glbind_PFD);
+            glbind_PixelFormat = glbind_ChoosePixelFormat(glbind_DC, &glbind_PFD);
             if (glbind_PixelFormat == 0) {
                 DestroyWindow(hWnd);
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
-            if (!SetPixelFormat(glbind_DC, glbind_PixelFormat, &glbind_PFD)) {
+            if (!glbind_SetPixelFormat(glbind_DC, glbind_PixelFormat, &glbind_PFD)) {
                 DestroyWindow(hWnd);
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
             glbind_RC = glbind_wglCreateContext(glbind_DC);
             if (glbind_RC == NULL) {
                 DestroyWindow(hWnd);
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
@@ -20240,15 +20278,13 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_OwnsDisplay = GL_TRUE;
             glbind_pDisplay = glbind_XOpenDisplay(NULL);
             if (glbind_pDisplay == NULL) {
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
             glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, DefaultScreen(glbind_pDisplay), attribs);
             if (glbind_pFBVisualInfo == NULL) {
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
@@ -20256,8 +20292,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 
             glbind_RC = glbind_glXCreateContext(glbind_pDisplay, glbind_pFBVisualInfo, NULL, GL_TRUE);
             if (glbind_RC == NULL) {
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
@@ -20269,8 +20304,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             /* Window's can not have dimensions of 0 in X11. We stick with dimensions of 1. */
             glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, InputOutput, glbind_pFBVisualInfo->visual, CWBorderPixel | CWColormap, &wa);
             if (glbind_DummyWindow == 0) {
-                glb_dlclose(g_glbOpenGLSO);
-                g_glbOpenGLSO = NULL;
+                glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
@@ -20336,8 +20370,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             }
 #endif
 
-            glb_dlclose(g_glbOpenGLSO);
-            g_glbOpenGLSO = NULL;
+            glbUnloadOpenGLSO();
         }
 
         return result;
