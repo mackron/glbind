@@ -129,6 +129,13 @@ int main(int argc, char** argv)
 
         gl.glXMakeCurrent(pDisplay, windowX11, glbGetRC());
 
+        /* Set the initial viewport size. Use the size from the window. */
+        XWindowAttributes windowAttributes;
+        XGetWindowAttributes(pDisplay, windowX11, &windowAttributes);
+
+        /* Now set the viewport. */
+        glViewport(0, 0, windowAttributes.width, windowAttributes.height);
+
         /* Loop. */
         for (;;) {
             if (XPending(pDisplay) > 0) {
