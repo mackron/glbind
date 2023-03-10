@@ -1705,6 +1705,88 @@ glbResult glbBuildGenerateOutputFile(glbBuild &context, const char* outputFilePa
         glbReplaceAllInline(outputStr, tags[iTag], generatedCode);
     }
 
+    /* Normalize all occurances of Display and then convert to our alternate name. */
+    glbReplaceAllInline(outputStr, "glbind_Display*", "Display*");
+    glbReplaceAllInline(outputStr, "Display *", "Display*");
+    glbReplaceAllInline(outputStr, "Display*", "glbind_Display*");
+
+    glbReplaceAllInline(outputStr, "glbind_XVisualInfo*", "XVisualInfo*");
+    glbReplaceAllInline(outputStr, "XVisualInfo *", "XVisualInfo*");
+    glbReplaceAllInline(outputStr, "XVisualInfo*", "glbind_XVisualInfo*");
+
+    glbReplaceAllInline(outputStr, "glbind_Visual*", "Visual*");
+    glbReplaceAllInline(outputStr, "Visual *", "Visual*");
+    glbReplaceAllInline(outputStr, "Visual*", "glbind_Visual*");
+
+    glbReplaceAllInline(outputStr, "glbind_XSetWindowAttributes*", "XSetWindowAttributes*");
+    glbReplaceAllInline(outputStr, "XSetWindowAttributes *", "XSetWindowAttributes*");
+    glbReplaceAllInline(outputStr, "XSetWindowAttributes*", "glbind_XSetWindowAttributes*");
+
+    glbReplaceAllInline(outputStr, "glbind_XID", "XID");
+    glbReplaceAllInline(outputStr, "XID ", "glbind_XID ");
+    glbReplaceAllInline(outputStr, " XID;", " glbind_XID;");
+    glbReplaceAllInline(outputStr, "[XID]", "[glbind_XID]");
+    glbReplaceAllInline(outputStr, "[glbind_XID]", "XID");
+
+    glbReplaceAllInline(outputStr, "glbind_Window", "Window");
+    glbReplaceAllInline(outputStr, "Window ", "glbind_Window ");
+    glbReplaceAllInline(outputStr, " Window;", " glbind_Window;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Window", "typedef Window");
+    glbReplaceAllInline(outputStr, "GLXglbind_Window", "GLXWindow");
+    glbReplaceAllInline(outputStr, "glbind_Dummyglbind_Window", "glbind_DummyWindow");
+    glbReplaceAllInline(outputStr, "typedef Window (", "typedef glbind_Window (");
+    glbReplaceAllInline(outputStr, "glbind_XCreateglbind_Window", "glbind_XCreateWindow");
+    glbReplaceAllInline(outputStr, "glbind_XDestroyglbind_Window", "glbind_XDestroyWindow");
+    glbReplaceAllInline(outputStr, "glbind_XRootglbind_Window", "glbind_XRootWindow");
+    glbReplaceAllInline(outputStr, "glXCreateglbind_Window", "glXCreateWindow");
+    glbReplaceAllInline(outputStr, "glXDestroyglbind_Window", "glXDestroyWindow");
+    
+    glbReplaceAllInline(outputStr, "glbind_Colormap", "Colormap");
+    glbReplaceAllInline(outputStr, "Colormap ", "glbind_Colormap ");
+    glbReplaceAllInline(outputStr, " Colormap;", " glbind_Colormap;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Colormap", "typedef Colormap");
+    glbReplaceAllInline(outputStr, "typedef Colormap (", "typedef glbind_Colormap (");
+    glbReplaceAllInline(outputStr, "glbind_XCreateglbind_Colormap", "glbind_XCreateColormap");
+    glbReplaceAllInline(outputStr, "glbind_XFreeglbind_Colormap", "glbind_XFreeColormap");
+    glbReplaceAllInline(outputStr, "glbind_Dummyglbind_Colormap", "glbind_DummyColormap");
+    glbReplaceAllInline(outputStr, "glbind_CWglbind_Colormap", "glbind_CWColormap");
+
+    glbReplaceAllInline(outputStr, "glbind_Pixmap", "Pixmap");
+    glbReplaceAllInline(outputStr, "Pixmap ", "glbind_Pixmap ");
+    glbReplaceAllInline(outputStr, " Pixmap;", " glbind_Pixmap;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Pixmap", "typedef Pixmap");
+    glbReplaceAllInline(outputStr, "GLXglbind_Pixmap", "GLXPixmap");
+    glbReplaceAllInline(outputStr, "glXCreateglbind_Pixmap", "glXCreatePixmap");
+    glbReplaceAllInline(outputStr, "glXDestroyglbind_Pixmap", "glXDestroyPixmap");
+
+    glbReplaceAllInline(outputStr, "glbind_Font", "Font");
+    glbReplaceAllInline(outputStr, "Font ", "glbind_Font ");
+    glbReplaceAllInline(outputStr, " Font;", " glbind_Font;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Font", "typedef Font");
+    glbReplaceAllInline(outputStr, "glXUseXglbind_Font", "glXUseXFont");
+
+    glbReplaceAllInline(outputStr, "glbind_Atom", "Atom");
+    glbReplaceAllInline(outputStr, "Atom ", "glbind_Atom ");
+    glbReplaceAllInline(outputStr, " Atom;", " glbind_Atom;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Atom", "typedef Atom");
+
+    glbReplaceAllInline(outputStr, "glbind_Cursor", "Cursor");
+    glbReplaceAllInline(outputStr, "Cursor ", "glbind_Cursor ");
+    glbReplaceAllInline(outputStr, " Cursor;", " glbind_Cursor;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Cursor", "typedef Cursor");
+
+    glbReplaceAllInline(outputStr, "glbind_Bool", "Bool");
+    glbReplaceAllInline(outputStr, "Bool ", "glbind_Bool ");
+    glbReplaceAllInline(outputStr, " Bool;", " glbind_Bool;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Bool", "typedef Bool");
+    glbReplaceAllInline(outputStr, "typedef Bool (", "typedef glbind_Bool (");
+
+    glbReplaceAllInline(outputStr, "glbind_Status", "Status");
+    //glbReplaceAllInline(outputStr, "Status ", "glbind_Status ");
+    glbReplaceAllInline(outputStr, " Status;", " glbind_Status;");
+    glbReplaceAllInline(outputStr, "typedef glbind_Status", "typedef Status");
+    glbReplaceAllInline(outputStr, "typedef Status (", "typedef glbind_Status (");
+
     glbOpenAndWriteTextFile(outputFilePath, outputStr.c_str());
     return GLB_SUCCESS;
 }

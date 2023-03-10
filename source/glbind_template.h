@@ -97,11 +97,93 @@ typedef float khronos_float_t;
 
 /* Platform headers. */
 #if defined(GLBIND_WGL)
-#include <windows.h>    /* Can we remove this dependency? */
+    #include <windows.h>    /* Can we remove this dependency? */
 #endif
 #if defined(GLBIND_GLX)
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+    #if !defined(GLBIND_NO_XLIB_HEADERS)
+        #include <X11/Xlib.h>
+        #include <X11/Xutil.h>
+
+        typedef Display                 glbind_Display;
+        typedef Visual                  glbind_Visual;
+        typedef VisualID                glbind_VisualID;
+        typedef XVisualInfo             glbind_XVisualInfo;
+        typedef XSetWindowAttributes    glbind_XSetWindowAttributes;
+        typedef [XID]                     glbind_XID;
+        typedef Window                  glbind_Window;
+        typedef Colormap                glbind_Colormap;
+        typedef Pixmap                  glbind_Pixmap;
+        typedef Font                    glbind_Font;
+        typedef Atom                    glbind_Atom;
+        typedef Cursor                  glbind_Cursor;
+        typedef Bool                    glbind_Bool;
+        typedef Status                  glbind_Status;
+
+        #define glbind_None             None
+        #define glbind_AllocNone        AllocNone
+
+        #define glbind_CWBorderPixel    CWBorderPixel
+        #define glbind_CWColormap       CWColormap
+
+        #define glbind_InputOutput      InputOutput
+    #else
+        typedef void*                   glbind_Display;
+        typedef void*                   glbind_Visual;
+        typedef unsigned long           glbind_VisualID;
+        typedef unsigned long           glbind_XID;
+        typedef glbind_XID              glbind_Window;
+        typedef glbind_XID              glbind_Colormap;
+        typedef glbind_XID              glbind_Pixmap;
+        typedef glbind_XID              glbind_Font;
+        typedef glbind_XID              glbind_Atom;
+        typedef glbind_XID              glbind_Cursor;
+        typedef int                     glbind_Bool;
+        typedef int                     glbind_Status;
+
+        #define glbind_None             0
+        #define glbind_AllocNone        0
+
+        #define glbind_CWBorderPixel    (1 << 3)
+        #define glbind_CWColormap       (1 << 13)
+
+        #define glbind_InputOutput      1
+        
+
+        /* We need to declare our own version of XVisualInfo */
+        typedef struct
+        {
+            glbind_Visual* visual;
+            glbind_VisualID visualid;
+            int screen;
+            int depth;
+            int class;
+            unsigned long red_mask;
+            unsigned long green_mask;
+            unsigned long blue_mask;
+            int colormap_size;
+            int bits_per_rgb;
+        } glbind_XVisualInfo;
+
+        /* We need to declare our own version of XSetWindowAttributes */
+        typedef struct
+        {
+            glbind_Pixmap background_pixmap;
+            unsigned long background_pixel;
+            glbind_Pixmap border_pixmap;
+            unsigned long border_pixel;
+            int bit_gravity;
+            int win_gravity;
+            int backing_store;
+            unsigned long backing_planes;
+            unsigned long backing_pixel;
+            int save_under;
+            long event_mask;
+            long do_not_propagate_mask;
+            int override_redirect;
+            glbind_Colormap colormap;
+            glbind_Cursor cursor;
+        } glbind_XSetWindowAttributes;
+    #endif
 #endif
 
 /*
@@ -136,7 +218,7 @@ typedef struct
     HWND hWnd;
 #endif
 #if defined(GLBIND_GLX)
-    Display* pDisplay;
+    glbind_Display* pDisplay;
 #endif
 } GLBconfig;
 
@@ -176,7 +258,7 @@ This does not bind these APIs to global scope. Use glbBindAPI() for this.
 GLenum glbInitContextAPI(HDC dc, HGLRC rc, GLBapi* pAPI);
 #endif
 #if defined(GLBIND_GLX)
-GLenum glbInitContextAPI(Display *dpy, GLXDrawable drawable, GLXContext rc, GLBapi* pAPI);
+GLenum glbInitContextAPI(glbind_Display* dpy, GLXDrawable drawable, GLXContext rc, GLBapi* pAPI);
 #endif
 
 /*
@@ -221,7 +303,7 @@ PIXELFORMATDESCRIPTOR* glbGetPFD();
 Retrieves a reference to the global Display that was created with the first call to glbInit(). If the display was set
 in the config object, that Display will be returned.
 */
-Display* glbGetDisplay();
+glbind_Display* glbGetDisplay();
 
 /*
 Retrieves the rendering context that was created on the first call to glbInit().
@@ -335,12 +417,12 @@ static LRESULT GLBIND_DummyWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, L
 }
 #endif
 #if defined(GLBIND_GLX)
-Display*     glbind_pDisplay      = 0;
-Window       glbind_DummyWindow   = 0;
-GLXContext   glbind_RC            = 0;
-Colormap     glbind_Colormap      = 0;
-XVisualInfo* glbind_pFBVisualInfo = 0;
-GLboolean    glbind_OwnsDisplay   = GL_FALSE;
+glbind_Display*     glbind_pDisplay      = 0;
+glbind_Window       glbind_DummyWindow   = 0;
+GLXContext          glbind_RC            = 0;
+glbind_Colormap     glbind_DummyColormap = 0;
+glbind_XVisualInfo* glbind_pFBVisualInfo = 0;
+GLboolean           glbind_OwnsDisplay   = GL_FALSE;
 #endif
 
 #if defined(GLBIND_WGL)
@@ -352,32 +434,49 @@ PFNWGLGETPROCADDRESSPROC        glbind_wglGetProcAddress;
 PFNWGLMAKECURRENTPROC           glbind_wglMakeCurrent;
 
 static GLBhandle g_glbGdi32DLL  = NULL;
-PFNCHOOSEPIXELFORMATPROC glbind_ChoosePixelFormat;
-PFNSETPIXELFORMATPROC    glbind_SetPixelFormat;
-PFNSWAPBUFFERSPROC       glbind_SwapBuffers;
+PFNCHOOSEPIXELFORMATPROC        glbind_ChoosePixelFormat;
+PFNSETPIXELFORMATPROC           glbind_SetPixelFormat;
+PFNSWAPBUFFERSPROC              glbind_SwapBuffers;
 #endif
 #if defined(GLBIND_GLX)
-PFNGLXCHOOSEVISUALPROC          glbind_glXChooseVisual;
-PFNGLXCREATECONTEXTPROC         glbind_glXCreateContext;
-PFNGLXDESTROYCONTEXTPROC        glbind_glXDestroyContext;
-PFNGLXMAKECURRENTPROC           glbind_glXMakeCurrent;
-PFNGLXSWAPBUFFERSPROC           glbind_glXSwapBuffers;
-PFNGLXGETCURRENTCONTEXTPROC     glbind_glXGetCurrentContext;
-PFNGLXQUERYEXTENSIONSSTRINGPROC glbind_glXQueryExtensionsString;
-PFNGLXGETCURRENTDISPLAYPROC     glbind_glXGetCurrentDisplay;
-PFNGLXGETCURRENTDRAWABLEPROC    glbind_glXGetCurrentDrawable;
-PFNGLXCHOOSEFBCONFIGPROC        glbind_glXChooseFBConfig;
-PFNGLXGETVISUALFROMFBCONFIGPROC glbind_glXGetVisualFromFBConfig;
-PFNGLXGETPROCADDRESSPROC        glbind_glXGetProcAddress;
+/* We need to define our own function types for the glX*() functions so they use our glbind_Display, etc. types instead of the normal types. */
+typedef glbind_XVisualInfo* (* GLB_PFNGLXCHOOSEVISUALPROC)          (glbind_Display* pDisplay, int screen, int* pAttribList);
+typedef GLXContext          (* GLB_PFNGLXCREATECONTEXTPROC)         (glbind_Display* pDisplay, glbind_XVisualInfo* pVisual, GLXContext shareList, GLboolean direct);
+typedef void                (* GLB_PFNGLXDESTROYCONTEXTPROC)        (glbind_Display* pDisplay, GLXContext context);
+typedef GLboolean           (* GLB_PFNGLXMAKECURRENTPROC)           (glbind_Display* pDisplay, GLXDrawable drawable, GLXContext context);
+typedef void                (* GLB_PFNGLXSWAPBUFFERSPROC)           (glbind_Display* pDisplay, GLXDrawable drawable);
+typedef GLXContext          (* GLB_PFNGLXGETCURRENTCONTEXTPROC)     (void);
+typedef const char*         (* GLB_PFNGLXQUERYEXTENSIONSSTRINGPROC) (glbind_Display* pDisplay, int screen);
+typedef glbind_Display*     (* GLB_PFNGLXGETCURRENTDISPLAYPROC)     (void);
+typedef GLXDrawable         (* GLB_PFNGLXGETCURRENTDRAWABLEPROC)    (void);
+typedef glbind_XVisualInfo* (* GLB_PFNGLXGETVISUALFROMFBCONFIGPROC) (glbind_Display* pDisplay, GLXFBConfig config);
+typedef GLXFBConfig*        (* GLB_PFNGLXCHOOSEFBCONFIGPROC)        (glbind_Display* pDisplay, int screen, const int* pAttribList, int* pCount);
+typedef GLBproc             (* GLB_PFNGLXGETPROCADDRESSPROC)        (const GLubyte* pName);
+
+/* Declare our global functions using the types above. */
+GLB_PFNGLXCHOOSEVISUALPROC          glbind_glXChooseVisual;
+GLB_PFNGLXCREATECONTEXTPROC         glbind_glXCreateContext;
+GLB_PFNGLXDESTROYCONTEXTPROC        glbind_glXDestroyContext;
+GLB_PFNGLXMAKECURRENTPROC           glbind_glXMakeCurrent;
+GLB_PFNGLXSWAPBUFFERSPROC           glbind_glXSwapBuffers;
+GLB_PFNGLXGETCURRENTCONTEXTPROC     glbind_glXGetCurrentContext;
+GLB_PFNGLXQUERYEXTENSIONSSTRINGPROC glbind_glXQueryExtensionsString;
+GLB_PFNGLXGETCURRENTDISPLAYPROC     glbind_glXGetCurrentDisplay;
+GLB_PFNGLXGETCURRENTDRAWABLEPROC    glbind_glXGetCurrentDrawable;
+GLB_PFNGLXGETVISUALFROMFBCONFIGPROC glbind_glXGetVisualFromFBConfig;
+GLB_PFNGLXCHOOSEFBCONFIGPROC        glbind_glXChooseFBConfig;
+GLB_PFNGLXGETPROCADDRESSPROC        glbind_glXGetProcAddress;
+
 
 static GLBhandle g_glbX11SO = NULL;
-typedef Display* (* GLB_PFNXOPENDISPLAYPROC)   (char* pDisplayName);
-typedef int      (* GLB_PFNXCLOSEDISPLAYPROC)  (Display* pDisplay);
-typedef Window   (* GLB_PFNXCREATEWINDOWPROC)  (Display *pDisplay, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int windowClass, Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
-typedef int      (* GLB_PFNXDESTROYWINDOWPROC) (Display* pDisplay, Window window);
-typedef Colormap (* GLB_PFNXCREATECOLORMAPPROC)(Display *pDisplay, Window window, Visual* pVisual, int alloc);
-typedef int      (* GLB_PFNXFREECOLORMAPPROC)  (Display *pDisplay, Colormap colormap);
-typedef int      (* GLB_PFNXDEFAULTSCREENPROC) (Display* pDisplay);
+typedef glbind_Display* (* GLB_PFNXOPENDISPLAYPROC)   (const char* pDisplayName);
+typedef int             (* GLB_PFNXCLOSEDISPLAYPROC)  (glbind_Display* pDisplay);
+typedef glbind_Window (* GLB_PFNXCREATEWINDOWPROC)  (glbind_Display* pDisplay, glbind_Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int windowClass, glbind_Visual* pVisual, unsigned long valueMask, XSetWindowAttributes* pAttributes);
+typedef int             (* GLB_PFNXDESTROYWINDOWPROC) (glbind_Display* pDisplay, glbind_Window window);
+typedef glbind_Colormap (* GLB_PFNXCREATECOLORMAPPROC)(glbind_Display* pDisplay, glbind_Window window, glbind_Visual* pVisual, int alloc);
+typedef int             (* GLB_PFNXFREECOLORMAPPROC)  (glbind_Display* pDisplay, glbind_Colormap colormap);
+typedef int             (* GLB_PFNXDEFAULTSCREENPROC) (glbind_Display* pDisplay);
+typedef glbind_Window (* GLB_PFNXROOTWINDOWPROC)    (glbind_Display* pDisplay, int screenNumber);
 
 GLB_PFNXOPENDISPLAYPROC    glbind_XOpenDisplay;
 GLB_PFNXCLOSEDISPLAYPROC   glbind_XCloseDisplay;
@@ -386,6 +485,7 @@ GLB_PFNXDESTROYWINDOWPROC  glbind_XDestroyWindow;
 GLB_PFNXCREATECOLORMAPPROC glbind_XCreateColormap;
 GLB_PFNXFREECOLORMAPPROC   glbind_XFreeColormap;
 GLB_PFNXDEFAULTSCREENPROC  glbind_XDefaultScreen;
+GLB_PFNXROOTWINDOWPROC     glbind_XRootWindow;
 #endif
 
 GLBproc glbGetProcAddress(const char* name)
@@ -551,18 +651,18 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
         }
 #endif
 #if defined(GLBIND_GLX)
-        glbind_glXChooseVisual          = (PFNGLXCHOOSEVISUALPROC         )glb_dlsym(g_glbOpenGLSO, "glXChooseVisual");
-        glbind_glXCreateContext         = (PFNGLXCREATECONTEXTPROC        )glb_dlsym(g_glbOpenGLSO, "glXCreateContext");
-        glbind_glXDestroyContext        = (PFNGLXDESTROYCONTEXTPROC       )glb_dlsym(g_glbOpenGLSO, "glXDestroyContext");
-        glbind_glXMakeCurrent           = (PFNGLXMAKECURRENTPROC          )glb_dlsym(g_glbOpenGLSO, "glXMakeCurrent");
-        glbind_glXSwapBuffers           = (PFNGLXSWAPBUFFERSPROC          )glb_dlsym(g_glbOpenGLSO, "glXSwapBuffers");
-        glbind_glXGetCurrentContext     = (PFNGLXGETCURRENTCONTEXTPROC    )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentContext");
-        glbind_glXQueryExtensionsString = (PFNGLXQUERYEXTENSIONSSTRINGPROC)glb_dlsym(g_glbOpenGLSO, "glXQueryExtensionsString");
-        glbind_glXGetCurrentDisplay     = (PFNGLXGETCURRENTDISPLAYPROC    )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentDisplay");
-        glbind_glXGetCurrentDrawable    = (PFNGLXGETCURRENTDRAWABLEPROC   )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentDrawable");
-        glbind_glXChooseFBConfig        = (PFNGLXCHOOSEFBCONFIGPROC       )glb_dlsym(g_glbOpenGLSO, "glXChooseFBConfig");
-        glbind_glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC)glb_dlsym(g_glbOpenGLSO, "glXGetVisualFromFBConfig");
-        glbind_glXGetProcAddress        = (PFNGLXGETPROCADDRESSPROC       )glb_dlsym(g_glbOpenGLSO, "glXGetProcAddress");
+        glbind_glXChooseVisual          = (GLB_PFNGLXCHOOSEVISUALPROC         )glb_dlsym(g_glbOpenGLSO, "glXChooseVisual");
+        glbind_glXCreateContext         = (GLB_PFNGLXCREATECONTEXTPROC        )glb_dlsym(g_glbOpenGLSO, "glXCreateContext");
+        glbind_glXDestroyContext        = (GLB_PFNGLXDESTROYCONTEXTPROC       )glb_dlsym(g_glbOpenGLSO, "glXDestroyContext");
+        glbind_glXMakeCurrent           = (GLB_PFNGLXMAKECURRENTPROC          )glb_dlsym(g_glbOpenGLSO, "glXMakeCurrent");
+        glbind_glXSwapBuffers           = (GLB_PFNGLXSWAPBUFFERSPROC          )glb_dlsym(g_glbOpenGLSO, "glXSwapBuffers");
+        glbind_glXGetCurrentContext     = (GLB_PFNGLXGETCURRENTCONTEXTPROC    )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentContext");
+        glbind_glXQueryExtensionsString = (GLB_PFNGLXQUERYEXTENSIONSSTRINGPROC)glb_dlsym(g_glbOpenGLSO, "glXQueryExtensionsString");
+        glbind_glXGetCurrentDisplay     = (GLB_PFNGLXGETCURRENTDISPLAYPROC    )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentDisplay");
+        glbind_glXGetCurrentDrawable    = (GLB_PFNGLXGETCURRENTDRAWABLEPROC   )glb_dlsym(g_glbOpenGLSO, "glXGetCurrentDrawable");
+        glbind_glXChooseFBConfig        = (GLB_PFNGLXCHOOSEFBCONFIGPROC       )glb_dlsym(g_glbOpenGLSO, "glXChooseFBConfig");
+        glbind_glXGetVisualFromFBConfig = (GLB_PFNGLXGETVISUALFROMFBCONFIGPROC)glb_dlsym(g_glbOpenGLSO, "glXGetVisualFromFBConfig");
+        glbind_glXGetProcAddress        = (GLB_PFNGLXGETPROCADDRESSPROC       )glb_dlsym(g_glbOpenGLSO, "glXGetProcAddress");
 
         if (glbind_glXChooseVisual          == NULL ||
             glbind_glXCreateContext         == NULL ||
@@ -587,6 +687,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
         glbind_XCreateColormap = (GLB_PFNXCREATECOLORMAPPROC)glb_dlsym(g_glbX11SO, "XCreateColormap");
         glbind_XFreeColormap   = (GLB_PFNXFREECOLORMAPPROC  )glb_dlsym(g_glbX11SO, "XFreeColormap");
         glbind_XDefaultScreen  = (GLB_PFNXDEFAULTSCREENPROC )glb_dlsym(g_glbX11SO, "XDefaultScreen");
+        glbind_XRootWindow     = (GLB_PFNXROOTWINDOWPROC    )glb_dlsym(g_glbX11SO, "XRootWindow");
 
         if (glbind_XOpenDisplay    == NULL ||
             glbind_XCloseDisplay   == NULL ||
@@ -594,7 +695,8 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             glbind_XDestroyWindow  == NULL ||
             glbind_XCreateColormap == NULL ||
             glbind_XFreeColormap   == NULL ||
-            glbind_XDefaultScreen  == NULL) {
+            glbind_XDefaultScreen  == NULL ||
+            glbind_XRootWindow     == NULL) {
             glbUnloadOpenGLSO();
             return GL_INVALID_OPERATION;
         }
@@ -671,12 +773,12 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 GLX_DEPTH_SIZE,    24,
                 GLX_STENCIL_SIZE,  8,
                 GLX_DOUBLEBUFFER,
-                None, None
+                glbind_None, glbind_None
             };
 
             if (pConfig != NULL) {
                 if (!pConfig->singleBuffered) {
-                    attribs[13] = None;
+                    attribs[13] = glbind_None;
                 }
             }
     
@@ -687,13 +789,13 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 return GL_INVALID_OPERATION;
             }
 
-            glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, DefaultScreen(glbind_pDisplay), attribs);
+            glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, glbind_XDefaultScreen(glbind_pDisplay), attribs);
             if (glbind_pFBVisualInfo == NULL) {
                 glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
-            glbind_Colormap = glbind_XCreateColormap(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, AllocNone);
+            glbind_DummyColormap = glbind_XCreateColormap(glbind_pDisplay, glbind_XRootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, glbind_AllocNone);
 
             glbind_RC = glbind_glXCreateContext(glbind_pDisplay, glbind_pFBVisualInfo, NULL, GL_TRUE);
             if (glbind_RC == NULL) {
@@ -702,12 +804,12 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
             }
 
             /* We cannot call any OpenGL APIs until a context is made current. In order to make a context current we will need a window. We just use a dummy window for this. */
-            XSetWindowAttributes wa;
-            wa.colormap = glbind_Colormap;
+            glbind_XSetWindowAttributes wa;
+            wa.colormap = glbind_DummyColormap;
             wa.border_pixel = 0;
 
             /* Window's can not have dimensions of 0 in X11. We stick with dimensions of 1. */
-            glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, RootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, InputOutput, glbind_pFBVisualInfo->visual, CWBorderPixel | CWColormap, &wa);
+            glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, glbind_XRootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, glbind_InputOutput, glbind_pFBVisualInfo->visual, glbind_CWBorderPixel | glbind_CWColormap, &wa);
             if (glbind_DummyWindow == 0) {
                 glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
@@ -814,7 +916,7 @@ GLenum glbInitContextAPI(Display *dpy, GLXDrawable drawable, GLXContext rc, GLBa
     GLenum result;
     GLXContext rcPrev = 0;
     GLXDrawable drawablePrev = 0;
-    Display* dpyPrev = NULL;
+    glbind_Display* dpyPrev = NULL;
 
     if (glbind_glXGetCurrentContext && glbind_glXGetCurrentDrawable && glbind_glXGetCurrentDisplay) {
         rcPrev       = glbind_glXGetCurrentContext();
@@ -925,7 +1027,7 @@ PIXELFORMATDESCRIPTOR* glbGetPFD()
 #endif
 
 #if defined(GLBIND_GLX)
-Display* glbGetDisplay()
+glbind_Display* glbGetDisplay()
 {
     return glbind_pDisplay;
 }
@@ -937,7 +1039,7 @@ GLXContext glbGetRC()
 
 Colormap glbGetColormap()
 {
-    return glbind_Colormap;
+    return glbind_DummyColormap;
 }
 
 XVisualInfo* glbGetFBVisualInfo()
