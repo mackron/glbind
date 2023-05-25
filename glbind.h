@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.14 - 2023-03-10
+glbind - v4.6.15 - 2023-05-26
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19883,6 +19883,13 @@ Retrieves the rendering context that was created on the first call to glbInit().
 HGLRC glbGetRC();
 
 /*
+Retrieves the device context of the dummy window that was created with the first call to glbInit().
+
+You can use this function for creating another rendering context without having to create your own dummy window.
+*/
+HDC glbGetDC();
+
+/*
 Retrieves the pixel format that's being used by the rendering context that was created on the first call to glbInit().
 */
 int glbGetPixelFormat();
@@ -27095,6 +27102,11 @@ GLenum glbBindAPI(const GLBapi* pAPI)
 HGLRC glbGetRC()
 {
     return glbind_RC;
+}
+
+HDC glbGetDC()
+{
+   return glbind_DC;
 }
 
 int glbGetPixelFormat()

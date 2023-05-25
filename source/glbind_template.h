@@ -288,6 +288,13 @@ Retrieves the rendering context that was created on the first call to glbInit().
 HGLRC glbGetRC();
 
 /*
+Retrieves the device context of the dummy window that was created with the first call to glbInit().
+
+You can use this function for creating another rendering context without having to create your own dummy window.
+*/
+HDC glbGetDC();
+
+/*
 Retrieves the pixel format that's being used by the rendering context that was created on the first call to glbInit().
 */
 int glbGetPixelFormat();
@@ -1013,6 +1020,11 @@ GLenum glbBindAPI(const GLBapi* pAPI)
 HGLRC glbGetRC()
 {
     return glbind_RC;
+}
+
+HDC glbGetDC()
+{
+   return glbind_DC;
 }
 
 int glbGetPixelFormat()
