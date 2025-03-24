@@ -2,6 +2,7 @@
 #include "../glbind.h"
 
 #include <stdio.h>
+#include <string.h> /* For strcmp() */
 
 typedef struct GLBexample GLBexample;
 typedef GLenum (* GLBOnInitProc)  (GLBexample* pExample);
@@ -34,6 +35,7 @@ struct GLBexample
     {
         Display* pDisplay;
         Window window;
+        Atom WM_DELETE_WINDOW;
     } x11;
 #endif
 };
@@ -62,6 +64,19 @@ static LRESULT glbExample_DefaultWindowProcWin32(HWND hWnd, UINT msg, WPARAM wPa
     }
 
     return DefWindowProcA(hWnd, msg, wParam, lParam);
+}
+#else
+static void glbExample_HandleEventX11(GLBexample* pExample, XEvent* e)
+{
+    if (e->type == ClientMessage && e->xclient.data.l[0] == (long)pExample->x11.WM_DELETE_WINDOW) {
+        XDestroyWindow(e->xclient.display, e->xclient.window);
+    }
+
+    if (e->type == ConfigureNotify) {
+        if (pExample->config.onSize) {
+            pExample->config.onSize(pExample, e->xconfigure.width, e->xconfigure.height);
+        }
+    }
 }
 #endif
 
@@ -103,11 +118,10 @@ static GLenum glbExampleInitWindow(GLBexample* pExample, GLsizei sizeX, GLsizei 
     {
         XSetWindowAttributes attr;
         XVisualInfo* pVisualInfo = glbGetFBVisualInfo();
-        Atom g_WM_DELETE_WINDOW = 0;
 
         pExample->x11.pDisplay = glbGetDisplay();
         pVisualInfo = glbGetFBVisualInfo();
-        g_WM_DELETE_WINDOW = XInternAtom(pExample->x11.pDisplay, "WM_DELETE_WINDOW", False);
+        pExample->x11.WM_DELETE_WINDOW = XInternAtom(pExample->x11.pDisplay, "WM_DELETE_WINDOW", False);
 
         attr.colormap   = glbGetColormap();
         attr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask | FocusChangeMask | VisibilityChangeMask;
@@ -118,7 +132,7 @@ static GLenum glbExampleInitWindow(GLBexample* pExample, GLsizei sizeX, GLsizei 
             return -1;
         }
 
-        XSetWMProtocols(pExample->x11.pDisplay, pExample->x11.window, &g_WM_DELETE_WINDOW, 1);
+        XSetWMProtocols(pExample->x11.pDisplay, pExample->x11.window, &pExample->x11.WM_DELETE_WINDOW, 1);
         XStoreName(pExample->x11.pDisplay, pExample->x11.window, pTitle);
     }
 #endif
@@ -149,7 +163,7 @@ static void glbExampleShowWindowAndMakeCurrent(GLBexample* pExample)
     ShowWindow(pExample->win32.hWnd, SW_SHOWNORMAL);
     pExample->gl.wglMakeCurrent(GetDC(pExample->win32.hWnd), glbGetRC()); /* Using the local API to avoid the need to link to OpenGL32.dll. */
 #else
-    XMapRaised(pExample->x11.pDisplay, pExample.x11.window);    /* <-- Show the window. */
+    XMapRaised(pExample->x11.pDisplay, pExample->x11.window);    /* <-- Show the window. */
     pExample->gl.glXMakeCurrent(pExample->x11.pDisplay, pExample->x11.window, glbGetRC());
 #endif
 }
@@ -200,7 +214,7 @@ void glbExampleUninit(GLBexample* pExample)
     }
 
     glbExampleUninitWindow(pExample);
-    glbUninit(&pExample->gl);
+    glbUninit();
 }
 
 int glbExampleRun(GLBexample* pExample)
@@ -225,18 +239,22 @@ int glbExampleRun(GLBexample* pExample)
     }
 #else
     for (;;) {
-        if (XPending(pDisplay) > 0) {
+        if (XPending(pExample->x11.pDisplay) > 0) {
             XEvent x11Event;
             XNextEvent(pExample->x11.pDisplay, &x11Event);
 
             if (x11Event.type == ClientMessage) {
-                if ((Atom)x11Event.xclient.data.l[0] == g_WM_DELETE_WINDOW) {
+                if ((Atom)x11Event.xclient.data.l[0] == pExample->x11.WM_DELETE_WINDOW) {
                     return 0;   /* Received a quit message. */
                 }
             };
 
-            /* Handle events here. */
+            glbExample_HandleEventX11(pExample, &x11Event);
         } else {
+            if (pExample->config.onDraw) {
+                pExample->config.onDraw(pExample);
+            }
+
             pExample->gl.glXSwapBuffers(pExample->x11.pDisplay, pExample->x11.window);
         }
     }
