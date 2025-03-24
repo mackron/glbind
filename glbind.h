@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.15 - 2023-05-26
+glbind - v4.6.16 - 2025-03-24
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19820,7 +19820,7 @@ typedef struct
 /*
 Initializes a config object which can later be passed to glbInit() to configure the rendering context that's created by glbInit().
 */
-GLBconfig glbConfigInit();
+GLBconfig glbConfigInit(void);
 
 /*
 Initializes glbind and attempts to load APIs statically.
@@ -19868,7 +19868,7 @@ Uninitializes glbind.
 
 Each call to glbInit() must be matched up with a call to glbUninit().
 */
-void glbUninit();
+void glbUninit(void);
 
 /*
 Binds the function pointers in pAPI to global scope.
@@ -19880,24 +19880,24 @@ GLenum glbBindAPI(const GLBapi* pAPI);
 /*
 Retrieves the rendering context that was created on the first call to glbInit().
 */
-HGLRC glbGetRC();
+HGLRC glbGetRC(void);
 
 /*
 Retrieves the device context of the dummy window that was created with the first call to glbInit().
 
 You can use this function for creating another rendering context without having to create your own dummy window.
 */
-HDC glbGetDC();
+HDC glbGetDC(void);
 
 /*
 Retrieves the pixel format that's being used by the rendering context that was created on the first call to glbInit().
 */
-int glbGetPixelFormat();
+int glbGetPixelFormat(void);
 
 /*
 Retrieves the pixel format descriptor being used by the rendering context that was created on the first call to glbInit().
 */
-PIXELFORMATDESCRIPTOR* glbGetPFD();
+PIXELFORMATDESCRIPTOR* glbGetPFD(void);
 #endif
 
 #if defined(GLBIND_GLX)
@@ -19905,22 +19905,22 @@ PIXELFORMATDESCRIPTOR* glbGetPFD();
 Retrieves a reference to the global Display that was created with the first call to glbInit(). If the display was set
 in the config object, that Display will be returned.
 */
-glbind_Display* glbGetDisplay();
+glbind_Display* glbGetDisplay(void);
 
 /*
 Retrieves the rendering context that was created on the first call to glbInit().
 */
-GLXContext glbGetRC();
+GLXContext glbGetRC(void);
 
 /*
 Retrieves the color map that was created on the first call to glbInit().
 */
-glbind_Colormap glbGetColormap();
+glbind_Colormap glbGetColormap(void);
 
 /*
 Retrieves the framebuffer visual info that was created on the first call to glbInit().
 */
-glbind_XVisualInfo* glbGetFBVisualInfo();
+glbind_XVisualInfo* glbGetFBVisualInfo(void);
 #endif
 
 #ifdef __cplusplus
@@ -20111,7 +20111,7 @@ GLBproc glbGetProcAddress(const char* name)
     return func;
 }
 
-GLenum glbLoadOpenGLSO()
+GLenum glbLoadOpenGLSO(void)
 {
     GLenum result;
     size_t i;
@@ -20179,7 +20179,7 @@ GLenum glbLoadOpenGLSO()
     return result;
 }
 
-void glbUnloadOpenGLSO()
+void glbUnloadOpenGLSO(void)
 {
     if (g_glbOpenGLSO == NULL) {
         return;
@@ -20204,7 +20204,7 @@ void glbUnloadOpenGLSO()
     g_glbOpenGLSO = NULL;
 }
 
-GLBconfig glbConfigInit()
+GLBconfig glbConfigInit(void)
 {
     GLBconfig config;
     glbZeroObject(&config);
@@ -23821,7 +23821,7 @@ GLenum glbInitCurrentContextAPI(GLBapi* pAPI)
     return GL_NO_ERROR;
 }
 
-void glbUninit()
+void glbUninit(void)
 {
     if (g_glbInitCount == 0) {
         return;
@@ -27099,44 +27099,44 @@ GLenum glbBindAPI(const GLBapi* pAPI)
 }
 
 #if defined(GLBIND_WGL)
-HGLRC glbGetRC()
+HGLRC glbGetRC(void)
 {
     return glbind_RC;
 }
 
-HDC glbGetDC()
+HDC glbGetDC(void)
 {
    return glbind_DC;
 }
 
-int glbGetPixelFormat()
+int glbGetPixelFormat(void)
 {
     return glbind_PixelFormat;
 }
 
-PIXELFORMATDESCRIPTOR* glbGetPFD()
+PIXELFORMATDESCRIPTOR* glbGetPFD(void)
 {
     return &glbind_PFD;
 }
 #endif
 
 #if defined(GLBIND_GLX)
-glbind_Display* glbGetDisplay()
+glbind_Display* glbGetDisplay(void)
 {
     return glbind_pDisplay;
 }
 
-GLXContext glbGetRC()
+GLXContext glbGetRC(void)
 {
     return glbind_RC;
 }
 
-glbind_Colormap glbGetColormap()
+glbind_Colormap glbGetColormap(void)
 {
     return glbind_DummyColormap;
 }
 
-glbind_XVisualInfo* glbGetFBVisualInfo()
+glbind_XVisualInfo* glbGetFBVisualInfo(void)
 {
     return glbind_pFBVisualInfo;
 }
