@@ -12,6 +12,8 @@ static GLenum CreateShader(GLBexample* pExample, GLenum shaderTarget, const char
 {
     GLint shaderErrorPos;
 
+    (void)pExample;
+
     /* Generate shader object. */
     glGenProgramsARB(1, pShaderObject);
     glBindProgramARB(shaderTarget, *pShaderObject);
@@ -92,6 +94,8 @@ GLenum onInit(GLBexample* pExample)
 
 void onDraw(GLBexample* pExample)
 {
+    (void)pExample;
+    
     glClearColor(0.2f, 0.5f, 0.8f, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -127,6 +131,9 @@ int main(int argc, char** argv)
     GLenum result;
     GLBexampleconfig config;
     GLBexample example;
+
+    (void)argc;
+    (void)argv;
     
     glbZeroObject(&config);
     config.pGLBConfig = NULL;

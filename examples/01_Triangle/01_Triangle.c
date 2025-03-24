@@ -3,7 +3,7 @@
 #define GLBIND_IMPLEMENTATION
 #include "../../glbind.h"
 
-void Render()
+void Render(void)
 {
     glClearColor(0.2f, 0.5f, 0.8f, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
