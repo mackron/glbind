@@ -1,3 +1,5 @@
-examples/_build/
-build/
-docs/
+.vscode
+/build
+/docs
+/examples/_build
+/resources/*.xml
