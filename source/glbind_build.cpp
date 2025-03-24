@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define GLB_BUILD_XML_PATH_GL   "../../resources/gl.xml"
-#define GLB_BUILD_XML_PATH_WGL  "../../resources/wgl.xml"
-#define GLB_BUILD_XML_PATH_GLX  "../../resources/glx.xml"
-#define GLB_BUILD_TEMPLATE_PATH "../../source/glbind_template.h"
+#define GLB_BUILD_XML_PATH_GL   "resources/gl.xml"
+#define GLB_BUILD_XML_PATH_WGL  "resources/wgl.xml"
+#define GLB_BUILD_XML_PATH_GLX  "resources/glx.xml"
+#define GLB_BUILD_TEMPLATE_PATH "source/glbind_template.h"
 
 // Edit these if you want to blacklist specific extensions.
 static const char* g_BlacklistedExtensions[] = {
@@ -1584,7 +1584,7 @@ glbResult glbBuildGenerateCode_C_Revision(glbBuild &context, std::string &codeOu
 
     size_t fileSize;
     char* pFileData;
-    if (glbOpenAndReadTextFile("../../glbind.h", &fileSize, &pFileData) == GLB_SUCCESS) {
+    if (glbOpenAndReadTextFile("glbind.h", &fileSize, &pFileData) == GLB_SUCCESS) {
         // We need to parse the previous version.
         std::string prevVersionMajor;
         std::string prevVersionMinor;
@@ -1849,7 +1849,7 @@ int main(int argc, char** argv)
 
 
     // Output file.
-    result = glbBuildGenerateOutputFile(context, "../../glbind.h");
+    result = glbBuildGenerateOutputFile(context, "glbind.h");
     if (result != GLB_SUCCESS) {
         printf("Failed to generate output file.\n");
         return (int)result;
