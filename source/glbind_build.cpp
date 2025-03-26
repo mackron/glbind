@@ -125,9 +125,10 @@ glbResult glbOpenAndReadFileWithExtraData(const char* filePath, size_t* pFileSiz
 {
     glbResult result;
     FILE* pFile;
-    uint64_t fileSize;
+    uint64_t fileSize, originalFileSize;
     void* pFileData;
-    size_t bytesRead;
+    char* pFileCharData;
+    size_t bytesRead, readerIndex, writerIndex;
 
     /* Safety. */
     if (pFileSizeOut) *pFileSizeOut = 0;
@@ -165,6 +166,21 @@ glbResult glbOpenAndReadFileWithExtraData(const char* filePath, size_t* pFileSiz
     }
 
     fclose(pFile);
+
+    originalFileSize = fileSize;
+    readerIndex = 0, writerIndex = 0;
+    pFileCharData = (char*)pFileData; /* (void*) to (char*) cast is well-defined */
+    while(readerIndex < originalFileSize){ /* tinyxml2 strips CR's, so this is required for mixing with the parsed code */
+        if(pFileCharData[readerIndex] == '\r' && pFileCharData[readerIndex + 1] == '\n'){ /* CR followed by LF */
+            fileSize--;
+        } else{
+            pFileCharData[writerIndex] = pFileCharData[readerIndex];
+            writerIndex++;
+        }
+        readerIndex++;
+    }
+
+    pFileData = realloc(pFileData, (size_t)fileSize + extraBytes); /* Reduce malloc'd size if necessary */
 
     if (pFileSizeOut) {
         *pFileSizeOut = (size_t)fileSize;
@@ -217,7 +233,7 @@ glbResult glbOpenAndWriteFile(const char* filePath, const void* pData, size_t da
         return GLB_INVALID_ARGS;
     }
 
-    result = glbFOpen(filePath, "wb", &pFile);
+    result = glbFOpen(filePath, "w", &pFile); /* Windows needs CRLF */
     if (result != GLB_SUCCESS) {
         return GLB_FAILED_TO_OPEN_FILE;
     }
