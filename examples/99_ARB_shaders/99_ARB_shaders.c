@@ -134,13 +134,14 @@ int main(int argc, char** argv)
 
     (void)argc;
     (void)argv;
-    
-    glbZeroObject(&config);
-    config.pGLBConfig = NULL;
-    config.pUserData  = NULL;
-    config.onInit     = onInit;
-    config.onDraw     = onDraw;
-    config.onSize     = onSize;
+
+    config = glbExampleDefaultConfig();
+    config.pWindowTitle = "ARB Shaders Example";
+    config.windowSizeX  = 640;
+    config.windowSizeY  = 480;
+    config.onInit       = onInit;
+    config.onDraw       = onDraw;
+    config.onSize       = onSize;
 
     result = glbExampleInit(&example, &config);
     if (result != GL_NO_ERROR) {

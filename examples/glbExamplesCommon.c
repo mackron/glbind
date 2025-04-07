@@ -14,6 +14,8 @@ typedef struct
 {
     GLBconfig* pGLBConfig;
     const char* pWindowTitle;
+    GLsizei windowSizeX;
+    GLsizei windowSizeY;
     void* pUserData;
     GLBOnInitProc   onInit;
     GLBOnUninitProc onUninit;
@@ -21,10 +23,26 @@ typedef struct
     GLBOnSizeProc   onSize;
 } GLBexampleconfig;
 
+GLBexampleconfig glbExampleDefaultConfig(void)
+{
+    GLBexampleconfig config;
+
+    glbZeroObject(&config);
+    config.pWindowTitle = "glbind Example";
+    config.windowSizeX  = 640;
+    config.windowSizeY  = 480;
+
+    return config;
+}
+
+
 struct GLBexample
 {
     GLBapi gl;
     GLBexampleconfig config;
+    GLboolean hasInitBeenCalled;  /* This is used to ensure onSize is not called before initialization. */
+    GLsizei windowSizeX;
+    GLsizei windowSizeY;
 #if defined(GLBIND_WGL)
     struct
     {
@@ -40,6 +58,44 @@ struct GLBexample
 #endif
 };
 
+static GLenum glbExample_OnInit(GLBexample* pExample)
+{
+    GLenum result;
+
+    if (pExample == NULL) {
+        return GL_INVALID_VALUE;
+    }
+
+    if (pExample->config.onInit) {
+        result = pExample->config.onInit(pExample);
+    } else {
+        result = GL_NO_ERROR;
+    }
+
+    pExample->hasInitBeenCalled = GL_TRUE;
+
+    return result;
+}
+
+static void glbExample_OnSize(GLBexample* pExample, GLsizei sizeX, GLsizei sizeY)
+{
+    if (pExample == NULL) {
+        return;
+    }
+
+    pExample->windowSizeX = sizeX;
+    pExample->windowSizeY = sizeY;
+
+    /* Do not fire the callback if the initialization callback has not yet been fired. */
+    if (pExample->hasInitBeenCalled == GL_FALSE) {
+        return;
+    }
+
+    if (pExample->config.onSize) {
+        pExample->config.onSize(pExample, sizeX, sizeY);
+    }
+}
+
 #if defined(GLBIND_WGL)
 static LRESULT glbExample_DefaultWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -54,9 +110,7 @@ static LRESULT glbExample_DefaultWindowProcWin32(HWND hWnd, UINT msg, WPARAM wPa
 
             case WM_SIZE:
             {
-                if (pExample->config.onSize) {
-                    pExample->config.onSize(pExample, LOWORD(lParam), HIWORD(lParam));
-                }
+                glbExample_OnSize(pExample, LOWORD(lParam), HIWORD(lParam));
             }
 
             default: break;
@@ -73,9 +127,7 @@ static void glbExample_HandleEventX11(GLBexample* pExample, XEvent* e)
     }
 
     if (e->type == ConfigureNotify) {
-        if (pExample->config.onSize) {
-            pExample->config.onSize(pExample, e->xconfigure.width, e->xconfigure.height);
-        }
+        glbExample_OnSize(pExample, e->xconfigure.width, e->xconfigure.height);
     }
 }
 #endif
@@ -185,7 +237,7 @@ GLenum glbExampleInit(GLBexample* pExample, GLBexampleconfig* pConfig)
     }
 
     /* Create the window. */
-    result = glbExampleInitWindow(pExample, 640, 480, (pConfig->pWindowTitle != NULL) ? pConfig->pWindowTitle : "glbind");
+    result = glbExampleInitWindow(pExample, pConfig->windowSizeX, pConfig->windowSizeY, (pConfig->pWindowTitle != NULL) ? pConfig->pWindowTitle : "glbind");
     if (result != GL_NO_ERROR) {
         glbUninit();
         return result;
@@ -195,14 +247,15 @@ GLenum glbExampleInit(GLBexample* pExample, GLBexampleconfig* pConfig)
     glbExampleShowWindowAndMakeCurrent(pExample);
 
     /* We need to wait for the context to be made current before calling the init callback to ensure resources can be loaded without an explicit MakeCurrent(). */
-    if (pExample->config.onInit) {
-        result = pExample->config.onInit(pExample);
-        if (result != GL_NO_ERROR) {
-            glbExampleUninitWindow(pExample);
-            glbUninit();
-            return result;
-        }
+    result = glbExample_OnInit(pExample);
+    if (result != GL_NO_ERROR) {
+        glbExampleUninitWindow(pExample);
+        glbUninit();
+        return result;
     }
+
+    /* Do an initial onSize call. */
+    glbExample_OnSize(pExample, pConfig->windowSizeX, pConfig->windowSizeY);
 
     return GL_NO_ERROR;
 }
