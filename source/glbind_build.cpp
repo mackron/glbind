@@ -1232,19 +1232,17 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
         codeOut += "#endif /* GLBIND_WGL */\n";
     }
 
-    if (!isGlobalScope) {
-        codeOut += "#if defined(GLBIND_GLX)\n";
-        for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
-            glbFeature &feature = context.features[iFeature];
-            if (feature.api == "glx") {
-                result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
-                if (result != GLB_SUCCESS) {
-                    return result;
-                }
+    codeOut += "#if defined(GLBIND_GLX)\n";
+    for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
+        glbFeature &feature = context.features[iFeature];
+        if (feature.api == "glx") {
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
             }
         }
-        codeOut += "#endif /* GLBIND_GLX */\n";
     }
+    codeOut += "#endif /* GLBIND_GLX */\n";
 
     // GL extensions.
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
@@ -1479,12 +1477,21 @@ glbResult glbBuildGenerateCode_C_SetGlobalAPIFromStruct(glbBuild &context, std::
         }
     }
 
-    // Some system APIs should not be bound to global scope because they declare their functions statically.
-#if 0
     // WGL features.
 
     // GLX features.
-#endif
+    codeOut += "#if defined(GLBIND_GLX)\n";
+    for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
+        glbFeature &feature = context.features[iFeature];
+        if (feature.api == "glx") {
+            result = glbBuildGenerateCode_C_SetGlobalAPIFromStruct_Feature(context, context.features[iFeature], processedCommands, codeOut);
+            if (result != GLB_SUCCESS) {
+                return result;
+            }
+        }
+    }
+    codeOut += "#endif /* GLBIND_GLX */\n";
+
 
     // GL extensions.
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
@@ -1734,7 +1741,7 @@ glbResult glbBuildGenerateOutputFile(glbBuild &context, const char* outputFilePa
     glbReplaceAllInline(outputStr, "typedef glbind_Window", "typedef Window");
     glbReplaceAllInline(outputStr, "GLXglbind_Window", "GLXWindow");
     glbReplaceAllInline(outputStr, "glbind_Dummyglbind_Window", "glbind_DummyWindow");
-    glbReplaceAllInline(outputStr, "typedef Window (", "typedef glbind_Window (");
+    glbReplaceAllInline(outputStr, "typedef Window   (", "typedef glbind_Window   (");
     glbReplaceAllInline(outputStr, "glbind_XCreateglbind_Window", "glbind_XCreateWindow");
     glbReplaceAllInline(outputStr, "glbind_XDestroyglbind_Window", "glbind_XDestroyWindow");
     glbReplaceAllInline(outputStr, "glbind_XRootglbind_Window", "glbind_XRootWindow");

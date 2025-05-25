@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.16 - 2025-03-24
+glbind - v4.6.17 - 2025-05-26
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -14360,6 +14360,47 @@ PFNGLSPECIALIZESHADERPROC glSpecializeShader;
 PFNGLMULTIDRAWARRAYSINDIRECTCOUNTPROC glMultiDrawArraysIndirectCount;
 PFNGLMULTIDRAWELEMENTSINDIRECTCOUNTPROC glMultiDrawElementsIndirectCount;
 PFNGLPOLYGONOFFSETCLAMPPROC glPolygonOffsetClamp;
+#if defined(GLBIND_GLX)
+PFNGLXCHOOSEVISUALPROC glXChooseVisual;
+PFNGLXCREATECONTEXTPROC glXCreateContext;
+PFNGLXDESTROYCONTEXTPROC glXDestroyContext;
+PFNGLXMAKECURRENTPROC glXMakeCurrent;
+PFNGLXCOPYCONTEXTPROC glXCopyContext;
+PFNGLXSWAPBUFFERSPROC glXSwapBuffers;
+PFNGLXCREATEGLXPIXMAPPROC glXCreateGLXPixmap;
+PFNGLXDESTROYGLXPIXMAPPROC glXDestroyGLXPixmap;
+PFNGLXQUERYEXTENSIONPROC glXQueryExtension;
+PFNGLXQUERYVERSIONPROC glXQueryVersion;
+PFNGLXISDIRECTPROC glXIsDirect;
+PFNGLXGETCONFIGPROC glXGetConfig;
+PFNGLXGETCURRENTCONTEXTPROC glXGetCurrentContext;
+PFNGLXGETCURRENTDRAWABLEPROC glXGetCurrentDrawable;
+PFNGLXWAITGLPROC glXWaitGL;
+PFNGLXWAITXPROC glXWaitX;
+PFNGLXUSEXFONTPROC glXUseXFont;
+PFNGLXQUERYEXTENSIONSSTRINGPROC glXQueryExtensionsString;
+PFNGLXQUERYSERVERSTRINGPROC glXQueryServerString;
+PFNGLXGETCLIENTSTRINGPROC glXGetClientString;
+PFNGLXGETCURRENTDISPLAYPROC glXGetCurrentDisplay;
+PFNGLXGETFBCONFIGSPROC glXGetFBConfigs;
+PFNGLXCHOOSEFBCONFIGPROC glXChooseFBConfig;
+PFNGLXGETFBCONFIGATTRIBPROC glXGetFBConfigAttrib;
+PFNGLXGETVISUALFROMFBCONFIGPROC glXGetVisualFromFBConfig;
+PFNGLXCREATEWINDOWPROC glXCreateWindow;
+PFNGLXDESTROYWINDOWPROC glXDestroyWindow;
+PFNGLXCREATEPIXMAPPROC glXCreatePixmap;
+PFNGLXDESTROYPIXMAPPROC glXDestroyPixmap;
+PFNGLXCREATEPBUFFERPROC glXCreatePbuffer;
+PFNGLXDESTROYPBUFFERPROC glXDestroyPbuffer;
+PFNGLXQUERYDRAWABLEPROC glXQueryDrawable;
+PFNGLXCREATENEWCONTEXTPROC glXCreateNewContext;
+PFNGLXMAKECONTEXTCURRENTPROC glXMakeContextCurrent;
+PFNGLXGETCURRENTREADDRAWABLEPROC glXGetCurrentReadDrawable;
+PFNGLXQUERYCONTEXTPROC glXQueryContext;
+PFNGLXSELECTEVENTPROC glXSelectEvent;
+PFNGLXGETSELECTEDEVENTPROC glXGetSelectedEvent;
+PFNGLXGETPROCADDRESSPROC glXGetProcAddress;
+#endif /* GLBIND_GLX */
 PFNGLTBUFFERMASK3DFXPROC glTbufferMask3DFX;
 PFNGLDEBUGMESSAGEENABLEAMDPROC glDebugMessageEnableAMD;
 PFNGLDEBUGMESSAGEINSERTAMDPROC glDebugMessageInsertAMD;
@@ -20028,32 +20069,32 @@ GLboolean           glbind_OwnsDisplay   = GL_FALSE;
 #endif
 
 #if defined(GLBIND_WGL)
-PFNWGLCREATECONTEXTPROC         glbind_wglCreateContext;
-PFNWGLDELETECONTEXTPROC         glbind_wglDeleteContext;
-PFNWGLGETCURRENTCONTEXTPROC     glbind_wglGetCurrentContext;
-PFNWGLGETCURRENTDCPROC          glbind_wglGetCurrentDC;
-PFNWGLGETPROCADDRESSPROC        glbind_wglGetProcAddress;
-PFNWGLMAKECURRENTPROC           glbind_wglMakeCurrent;
+PFNWGLCREATECONTEXTPROC        glbind_wglCreateContext;
+PFNWGLDELETECONTEXTPROC        glbind_wglDeleteContext;
+PFNWGLGETCURRENTCONTEXTPROC    glbind_wglGetCurrentContext;
+PFNWGLGETCURRENTDCPROC         glbind_wglGetCurrentDC;
+PFNWGLGETPROCADDRESSPROC       glbind_wglGetProcAddress;
+PFNWGLMAKECURRENTPROC          glbind_wglMakeCurrent;
 
-static GLBhandle g_glbGdi32DLL  = NULL;
-PFNCHOOSEPIXELFORMATPROC        glbind_ChoosePixelFormat;
-PFNSETPIXELFORMATPROC           glbind_SetPixelFormat;
-PFNSWAPBUFFERSPROC              glbind_SwapBuffers;
+static GLBhandle g_glbGdi32DLL = NULL;
+PFNCHOOSEPIXELFORMATPROC       glbind_ChoosePixelFormat;
+PFNSETPIXELFORMATPROC          glbind_SetPixelFormat;
+PFNSWAPBUFFERSPROC             glbind_SwapBuffers;
 #endif
 #if defined(GLBIND_GLX)
 /* We need to define our own function types for the glX*() functions so they use our glbind_Display, etc. types instead of the normal types. */
-typedef glbind_XVisualInfo* (* GLB_PFNGLXCHOOSEVISUALPROC)          (glbind_Display* pDisplay, int screen, int* pAttribList);
-typedef GLXContext          (* GLB_PFNGLXCREATECONTEXTPROC)         (glbind_Display* pDisplay, glbind_XVisualInfo* pVisual, GLXContext shareList, GLboolean direct);
-typedef void                (* GLB_PFNGLXDESTROYCONTEXTPROC)        (glbind_Display* pDisplay, GLXContext context);
-typedef GLboolean           (* GLB_PFNGLXMAKECURRENTPROC)           (glbind_Display* pDisplay, GLXDrawable drawable, GLXContext context);
-typedef void                (* GLB_PFNGLXSWAPBUFFERSPROC)           (glbind_Display* pDisplay, GLXDrawable drawable);
-typedef GLXContext          (* GLB_PFNGLXGETCURRENTCONTEXTPROC)     (void);
-typedef const char*         (* GLB_PFNGLXQUERYEXTENSIONSSTRINGPROC) (glbind_Display* pDisplay, int screen);
-typedef glbind_Display*     (* GLB_PFNGLXGETCURRENTDISPLAYPROC)     (void);
-typedef GLXDrawable         (* GLB_PFNGLXGETCURRENTDRAWABLEPROC)    (void);
-typedef glbind_XVisualInfo* (* GLB_PFNGLXGETVISUALFROMFBCONFIGPROC) (glbind_Display* pDisplay, GLXFBConfig config);
-typedef GLXFBConfig*        (* GLB_PFNGLXCHOOSEFBCONFIGPROC)        (glbind_Display* pDisplay, int screen, const int* pAttribList, int* pCount);
-typedef GLBproc             (* GLB_PFNGLXGETPROCADDRESSPROC)        (const GLubyte* pName);
+typedef glbind_XVisualInfo* (* GLB_PFNGLXCHOOSEVISUALPROC)         (glbind_Display* pDisplay, int screen, int* pAttribList);
+typedef GLXContext          (* GLB_PFNGLXCREATECONTEXTPROC)        (glbind_Display* pDisplay, glbind_XVisualInfo* pVisual, GLXContext shareList, GLboolean direct);
+typedef void                (* GLB_PFNGLXDESTROYCONTEXTPROC)       (glbind_Display* pDisplay, GLXContext context);
+typedef GLboolean           (* GLB_PFNGLXMAKECURRENTPROC)          (glbind_Display* pDisplay, GLXDrawable drawable, GLXContext context);
+typedef void                (* GLB_PFNGLXSWAPBUFFERSPROC)          (glbind_Display* pDisplay, GLXDrawable drawable);
+typedef GLXContext          (* GLB_PFNGLXGETCURRENTCONTEXTPROC)    (void);
+typedef const char*         (* GLB_PFNGLXQUERYEXTENSIONSSTRINGPROC)(glbind_Display* pDisplay, int screen);
+typedef glbind_Display*     (* GLB_PFNGLXGETCURRENTDISPLAYPROC)    (void);
+typedef GLXDrawable         (* GLB_PFNGLXGETCURRENTDRAWABLEPROC)   (void);
+typedef glbind_XVisualInfo* (* GLB_PFNGLXGETVISUALFROMFBCONFIGPROC)(glbind_Display* pDisplay, GLXFBConfig config);
+typedef GLXFBConfig*        (* GLB_PFNGLXCHOOSEFBCONFIGPROC)       (glbind_Display* pDisplay, int screen, const int* pAttribList, int* pCount);
+typedef GLBproc             (* GLB_PFNGLXGETPROCADDRESSPROC)       (const GLubyte* pName);
 
 /* Declare our global functions using the types above. */
 GLB_PFNGLXCHOOSEVISUALPROC          glbind_glXChooseVisual;
@@ -20073,12 +20114,12 @@ GLB_PFNGLXGETPROCADDRESSPROC        glbind_glXGetProcAddress;
 static GLBhandle g_glbX11SO = NULL;
 typedef glbind_Display* (* GLB_PFNXOPENDISPLAYPROC)   (const char* pDisplayName);
 typedef int             (* GLB_PFNXCLOSEDISPLAYPROC)  (glbind_Display* pDisplay);
-typedef glbind_Window (* GLB_PFNXCREATEWINDOWPROC)  (glbind_Display* pDisplay, glbind_Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int windowClass, glbind_Visual* pVisual, unsigned long valueMask, glbind_XSetWindowAttributes* pAttributes);
+typedef glbind_Window   (* GLB_PFNXCREATEWINDOWPROC)  (glbind_Display* pDisplay, glbind_Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int borderWidth, int depth, unsigned int windowClass, glbind_Visual* pVisual, unsigned long valueMask, glbind_XSetWindowAttributes* pAttributes);
 typedef int             (* GLB_PFNXDESTROYWINDOWPROC) (glbind_Display* pDisplay, glbind_Window window);
 typedef glbind_Colormap (* GLB_PFNXCREATECOLORMAPPROC)(glbind_Display* pDisplay, glbind_Window window, glbind_Visual* pVisual, int alloc);
 typedef int             (* GLB_PFNXFREECOLORMAPPROC)  (glbind_Display* pDisplay, glbind_Colormap colormap);
 typedef int             (* GLB_PFNXDEFAULTSCREENPROC) (glbind_Display* pDisplay);
-typedef glbind_Window (* GLB_PFNXROOTWINDOWPROC)    (glbind_Display* pDisplay, int screenNumber);
+typedef glbind_Window   (* GLB_PFNXROOTWINDOWPROC)    (glbind_Display* pDisplay, int screenNumber);
 
 GLB_PFNXOPENDISPLAYPROC    glbind_XOpenDisplay;
 GLB_PFNXCLOSEDISPLAYPROC   glbind_XCloseDisplay;
@@ -24928,6 +24969,47 @@ GLenum glbBindAPI(const GLBapi* pAPI)
     glMultiDrawArraysIndirectCount = pAPI->glMultiDrawArraysIndirectCount;
     glMultiDrawElementsIndirectCount = pAPI->glMultiDrawElementsIndirectCount;
     glPolygonOffsetClamp = pAPI->glPolygonOffsetClamp;
+#if defined(GLBIND_GLX)
+    glXChooseVisual = pAPI->glXChooseVisual;
+    glXCreateContext = pAPI->glXCreateContext;
+    glXDestroyContext = pAPI->glXDestroyContext;
+    glXMakeCurrent = pAPI->glXMakeCurrent;
+    glXCopyContext = pAPI->glXCopyContext;
+    glXSwapBuffers = pAPI->glXSwapBuffers;
+    glXCreateGLXPixmap = pAPI->glXCreateGLXPixmap;
+    glXDestroyGLXPixmap = pAPI->glXDestroyGLXPixmap;
+    glXQueryExtension = pAPI->glXQueryExtension;
+    glXQueryVersion = pAPI->glXQueryVersion;
+    glXIsDirect = pAPI->glXIsDirect;
+    glXGetConfig = pAPI->glXGetConfig;
+    glXGetCurrentContext = pAPI->glXGetCurrentContext;
+    glXGetCurrentDrawable = pAPI->glXGetCurrentDrawable;
+    glXWaitGL = pAPI->glXWaitGL;
+    glXWaitX = pAPI->glXWaitX;
+    glXUseXFont = pAPI->glXUseXFont;
+    glXQueryExtensionsString = pAPI->glXQueryExtensionsString;
+    glXQueryServerString = pAPI->glXQueryServerString;
+    glXGetClientString = pAPI->glXGetClientString;
+    glXGetCurrentDisplay = pAPI->glXGetCurrentDisplay;
+    glXGetFBConfigs = pAPI->glXGetFBConfigs;
+    glXChooseFBConfig = pAPI->glXChooseFBConfig;
+    glXGetFBConfigAttrib = pAPI->glXGetFBConfigAttrib;
+    glXGetVisualFromFBConfig = pAPI->glXGetVisualFromFBConfig;
+    glXCreateWindow = pAPI->glXCreateWindow;
+    glXDestroyWindow = pAPI->glXDestroyWindow;
+    glXCreatePixmap = pAPI->glXCreatePixmap;
+    glXDestroyPixmap = pAPI->glXDestroyPixmap;
+    glXCreatePbuffer = pAPI->glXCreatePbuffer;
+    glXDestroyPbuffer = pAPI->glXDestroyPbuffer;
+    glXQueryDrawable = pAPI->glXQueryDrawable;
+    glXCreateNewContext = pAPI->glXCreateNewContext;
+    glXMakeContextCurrent = pAPI->glXMakeContextCurrent;
+    glXGetCurrentReadDrawable = pAPI->glXGetCurrentReadDrawable;
+    glXQueryContext = pAPI->glXQueryContext;
+    glXSelectEvent = pAPI->glXSelectEvent;
+    glXGetSelectedEvent = pAPI->glXGetSelectedEvent;
+    glXGetProcAddress = pAPI->glXGetProcAddress;
+#endif /* GLBIND_GLX */
     glTbufferMask3DFX = pAPI->glTbufferMask3DFX;
     glDebugMessageEnableAMD = pAPI->glDebugMessageEnableAMD;
     glDebugMessageInsertAMD = pAPI->glDebugMessageInsertAMD;
