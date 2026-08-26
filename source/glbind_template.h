@@ -204,7 +204,9 @@ some program wants to use them.
 
 /*<<opengl_main>>*/
 
-/*<<opengl_funcpointers_decl_global>>*/
+#ifndef GLBIND_NO_GLOBAL_API
+/*<<opengl_funcpointers_decl_global:extern>>*/
+#endif /* GLBIND_NO_GLOBAL_API */
 
 typedef struct
 {
@@ -359,6 +361,10 @@ GLboolean glbIsExtensionSupported(GLBapi* pAPI, const char* extensionName);
     #include <unistd.h>
     #include <dlfcn.h>
 #endif
+
+#ifndef GLBIND_NO_GLOBAL_API
+/*<<opengl_funcpointers_decl_global>>*/
+#endif /* GLBIND_NO_GLOBAL_API */
 
 typedef void* GLBhandle;
 typedef void (* GLBproc)(void);
@@ -621,6 +627,12 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 {
     GLenum result;
 
+#if defined(GLBIND_NO_GLOBAL_API)
+    if (pAPI == NULL) {
+        return GL_INVALID_OPERATION;
+    }
+#endif
+
     if (g_glbInitCount == 0) {
         result = glbLoadOpenGLSO();
         if (result != GL_NO_ERROR) {
@@ -836,7 +848,9 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 #endif
         if (result == GL_NO_ERROR) {
             if (g_glbInitCount == 0) {
+#if !defined(GLBIND_NO_GLOBAL_API)
                 result = glbBindAPI(pAPI);
+#endif
             }
         }
     } else {
@@ -996,6 +1010,12 @@ GLenum glbBindAPI(const GLBapi* pAPI)
 {
     GLenum result;
 
+#if defined(GLBIND_NO_GLOBAL_API)
+    (void)pAPI;
+    (void)result;
+    return GL_INVALID_OPERATION;
+#else
+
     if (pAPI == NULL) {
         GLBapi tempAPI;
 #if defined(GLBIND_WGL)
@@ -1014,6 +1034,7 @@ GLenum glbBindAPI(const GLBapi* pAPI)
 /*<<set_global_api_from_struct>>*/
 
     return GL_NO_ERROR;
+#endif
 }
 
 #if defined(GLBIND_WGL)
@@ -1122,8 +1143,20 @@ GLboolean glbIsExtensionInString(const char* ext, const char* str)
 #if defined(GLBIND_WGL)
 GLboolean glbIsExtensionSupportedWGL(GLBapi* pAPI, const char* extensionName)
 {
+#if defined(GLBIND_NO_GLOBAL_API)
+    PFNWGLGETEXTENSIONSSTRINGARBPROC _wglGetExtensionsStringARB;
+    PFNWGLGETEXTENSIONSSTRINGEXTPROC _wglGetExtensionsStringEXT;
+
+    if (pAPI == NULL) {
+        return GL_FALSE;
+    }
+
+    _wglGetExtensionsStringARB = pAPI->wglGetExtensionsStringARB;
+    _wglGetExtensionsStringEXT = pAPI->wglGetExtensionsStringEXT;
+#else
     PFNWGLGETEXTENSIONSSTRINGARBPROC _wglGetExtensionsStringARB = (pAPI != NULL) ? pAPI->wglGetExtensionsStringARB : wglGetExtensionsStringARB;
     PFNWGLGETEXTENSIONSSTRINGEXTPROC _wglGetExtensionsStringEXT = (pAPI != NULL) ? pAPI->wglGetExtensionsStringEXT : wglGetExtensionsStringEXT;
+#endif
     PFNWGLGETCURRENTDCPROC           _wglGetCurrentDC           = (pAPI != NULL) ? pAPI->wglGetCurrentDC           : glbind_wglGetCurrentDC;
 
     if (_wglGetExtensionsStringARB) {
@@ -1153,9 +1186,23 @@ GLboolean glbIsExtensionSupportedGLX(GLBapi* pAPI, const char* extensionName)
 GLboolean glbIsExtensionSupported(GLBapi* pAPI, const char* extensionName)
 {
     GLboolean isSupported = GL_FALSE;
+#if defined(GLBIND_NO_GLOBAL_API)
+    PFNGLGETSTRINGIPROC  _glGetStringi;
+    PFNGLGETSTRINGPROC   _glGetString;
+    PFNGLGETINTEGERVPROC _glGetIntegerv;
+
+    if (pAPI == NULL) {
+        return GL_FALSE;
+    }
+
+    _glGetStringi  = pAPI->glGetStringi;
+    _glGetString   = pAPI->glGetString;
+    _glGetIntegerv = pAPI->glGetIntegerv;
+#else
     PFNGLGETSTRINGIPROC  _glGetStringi  = (pAPI != NULL) ? pAPI->glGetStringi  : glGetStringi;
     PFNGLGETSTRINGPROC   _glGetString   = (pAPI != NULL) ? pAPI->glGetString   : glGetString;
     PFNGLGETINTEGERVPROC _glGetIntegerv = (pAPI != NULL) ? pAPI->glGetIntegerv : glGetIntegerv;
+#endif
 
     /* Try the new way first. */
     if (_glGetStringi && _glGetIntegerv) {

@@ -1148,7 +1148,7 @@ glbResult glbBuildGenerateCode_C_Main(glbBuild &context, std::string &codeOut)
 
 
 
-glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(glbBuild &context, int indentation, const glbRequire &require, std::vector<std::string> &processedCommands, std::string &codeOut)
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(glbBuild &context, int indentation, bool isExtern, const glbRequire &require, std::vector<std::string> &processedCommands, std::string &codeOut)
 {
     glbResult result;
 
@@ -1164,6 +1164,9 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(glbBuild
             for (int i = 0; i < indentation; ++i) {
                 codeOut += " ";
             }
+            if (isExtern) {
+                codeOut += "extern ";
+            }
             codeOut += "PFN" + glbToUpper(pCommand->name) + "PROC " + pCommand->name + ";\n";
 
             processedCommands.push_back(commandName);
@@ -1173,10 +1176,10 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(glbBuild
     return GLB_SUCCESS;
 }
 
-glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(glbBuild &context, int indentation, const glbExtension &extension, std::vector<std::string> &processedCommands, std::string &codeOut)
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(glbBuild &context, int indentation, bool isExtern, const glbExtension &extension, std::vector<std::string> &processedCommands, std::string &codeOut)
 {
     for (size_t iRequire = 0; iRequire < extension.requires.size(); ++iRequire) {
-        glbResult result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(context, indentation, extension.requires[iRequire], processedCommands, codeOut);
+        glbResult result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(context, indentation, isExtern, extension.requires[iRequire], processedCommands, codeOut);
         if (result != GLB_SUCCESS) {
             return result;
         }       
@@ -1185,10 +1188,10 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(glbBuild &cont
     return GLB_SUCCESS;
 }
 
-glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(glbBuild &context, int indentation, const glbFeature &feature, std::vector<std::string> &processedCommands, std::string &codeOut)
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(glbBuild &context, int indentation, bool isExtern, const glbFeature &feature, std::vector<std::string> &processedCommands, std::string &codeOut)
 {
     for (size_t iRequire = 0; iRequire < feature.requires.size(); ++iRequire) {
-        glbResult result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(context, indentation, feature.requires[iRequire], processedCommands, codeOut);
+        glbResult result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_RequireCommands(context, indentation, isExtern, feature.requires[iRequire], processedCommands, codeOut);
         if (result != GLB_SUCCESS) {
             return result;
         }       
@@ -1197,7 +1200,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(glbBuild &contex
     return GLB_SUCCESS;
 }
 
-glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int indentation, std::string &codeOut)
+glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int indentation, bool isExtern, std::string &codeOut)
 {
     glbResult result;
     std::vector<std::string> processedCommands;
@@ -1207,7 +1210,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
         glbFeature &feature = context.features[iFeature];
         if (feature.api == "gl") {
-            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, isExtern, context.features[iFeature], processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
             }
@@ -1223,7 +1226,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
         for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
             glbFeature &feature = context.features[iFeature];
             if (feature.api == "wgl") {
-                result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+                result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, isExtern, context.features[iFeature], processedCommands, codeOut);
                 if (result != GLB_SUCCESS) {
                     return result;
                 }
@@ -1236,7 +1239,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     for (size_t iFeature = 0; iFeature < context.features.size(); ++iFeature) {
         glbFeature &feature = context.features[iFeature];
         if (feature.api == "glx") {
-            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, context.features[iFeature], processedCommands, codeOut);
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Feature(context, indentation, isExtern, context.features[iFeature], processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
             }
@@ -1248,7 +1251,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
         if (!glbIsExtensionBlackListed(extension.name.c_str()) && (extension.supported == "gl" || glbContains(extension.supported, "gl|") || glbContains(extension.supported, "glcore"))) {
-            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, isExtern, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
             }
@@ -1260,7 +1263,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
         if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "wgl")) {
-            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, isExtern, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
             }
@@ -1273,7 +1276,7 @@ glbResult glbBuildGenerateCode_C_FuncPointersDeclGlobal(glbBuild &context, int i
     for (size_t iExtension = 0; iExtension < context.extensions.size(); ++iExtension) {
         glbExtension &extension = context.extensions[iExtension];
         if (!glbIsExtensionBlackListed(extension.name.c_str()) && glbContains(extension.supported, "glx")) {
-            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, extension, processedCommands, codeOut);
+            result = glbBuildGenerateCode_C_FuncPointersDeclGlobal_Extension(context, indentation, isExtern, extension, processedCommands, codeOut);
             if (result != GLB_SUCCESS) {
                 return result;
             }
@@ -1652,11 +1655,14 @@ glbResult glbBuildGenerateCode_C(glbBuild &context, const char* tag, std::string
     if (strcmp(tag, "/*<<opengl_main>>*/") == 0) {
         result = glbBuildGenerateCode_C_Main(context, codeOut);
     }
+    if (strcmp(tag, "/*<<opengl_funcpointers_decl_global:extern>>*/") == 0) {
+        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 0, true, codeOut);
+    }
     if (strcmp(tag, "/*<<opengl_funcpointers_decl_global>>*/") == 0) {
-        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 0, codeOut);
+        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 0, false, codeOut);
     }
     if (strcmp(tag, "/*<<opengl_funcpointers_decl_global:4>>*/") == 0) {
-        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 4, codeOut);
+        result = glbBuildGenerateCode_C_FuncPointersDeclGlobal(context, 4, false, codeOut);
     }
     if (strcmp(tag, "/*<<init_current_context_api>>*/") == 0) {
         result = glbBuildGenerateCode_C_InitCurrentContextAPI(context, codeOut);
@@ -1693,6 +1699,7 @@ glbResult glbBuildGenerateOutputFile(glbBuild &context, const char* outputFilePa
     // There will be a series of tags that we need to replace with generated code.
     const char* tags[] = {
         "/*<<opengl_main>>*/",
+        "/*<<opengl_funcpointers_decl_global:extern>>*/",
         "/*<<opengl_funcpointers_decl_global>>*/",
         "/*<<opengl_funcpointers_decl_global:4>>*/",
         "/*<<init_current_context_api>>*/",
