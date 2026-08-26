@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.20 - 2026-08-26
+glbind - v4.6.21 - 2026-08-26
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19857,6 +19857,8 @@ typedef struct
 #endif
 #if defined(GLBIND_GLX)
     glbind_Display* pDisplay;
+    glbind_Window window;
+    glbind_XVisualInfo* pFBVisualInfo;
 #endif
 } GLBconfig;
 
@@ -19886,6 +19888,10 @@ pointers are valid for that context.
 You can configure the internal rendering context by specifying a GLBconfig object. This can NULL in which case it will use
 defaults. Initialize the config object with glbConfigInit(). The default config creates a context with 32-bit color, 24-bit depth,
 8-bit stencil and double-buffered.
+
+On GLX, pDisplay, window and pFBVisualInfo can specify an existing X11 display, window and visual information. The window and
+visual information must belong to pDisplay, and the window must use the specified visual. glbind does not destroy supplied
+objects.
 */
 GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig);
 
@@ -23328,6 +23334,7 @@ static LRESULT GLBIND_DummyWindowProcWin32(HWND hWnd, UINT msg, WPARAM wParam, L
 #if defined(GLBIND_GLX)
 glbind_Display*     glbind_pDisplay      = 0;
 glbind_Window       glbind_DummyWindow   = 0;
+GLXDrawable         glbind_Drawable      = 0;
 GLXContext          glbind_RC            = 0;
 glbind_Colormap     glbind_DummyColormap = 0;
 glbind_XVisualInfo* glbind_pFBVisualInfo = 0;
@@ -23679,6 +23686,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
 
 #if defined(GLBIND_GLX)
         {
+            glbind_Window window = 0;
             static int attribs[] = {
                 GLX_RGBA,
                 GLX_RED_SIZE,      8,
@@ -23695,22 +23703,28 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 if (!pConfig->singleBuffered) {
                     attribs[13] = glbind_None;
                 }
+
+                glbind_pDisplay = pConfig->pDisplay;
+                window = pConfig->window;
+                glbind_pFBVisualInfo = pConfig->pFBVisualInfo;
             }
-    
-            glbind_OwnsDisplay = GL_TRUE;
-            glbind_pDisplay = glbind_XOpenDisplay(NULL);
+
+            if (glbind_pDisplay == NULL) {
+                glbind_OwnsDisplay = GL_TRUE;
+                glbind_pDisplay = glbind_XOpenDisplay(NULL);
+            }
             if (glbind_pDisplay == NULL) {
                 glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
 
-            glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, glbind_XDefaultScreen(glbind_pDisplay), attribs);
+            if (glbind_pFBVisualInfo == NULL) {
+                glbind_pFBVisualInfo = glbind_glXChooseVisual(glbind_pDisplay, glbind_XDefaultScreen(glbind_pDisplay), attribs);
+            }
             if (glbind_pFBVisualInfo == NULL) {
                 glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
-
-            glbind_DummyColormap = glbind_XCreateColormap(glbind_pDisplay, glbind_XRootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, glbind_AllocNone);
 
             glbind_RC = glbind_glXCreateContext(glbind_pDisplay, glbind_pFBVisualInfo, NULL, GL_TRUE);
             if (glbind_RC == NULL) {
@@ -23718,19 +23732,68 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 return GL_INVALID_OPERATION;
             }
 
-            /* We cannot call any OpenGL APIs until a context is made current. In order to make a context current we will need a window. We just use a dummy window for this. */
-            glbind_XSetWindowAttributes wa;
-            wa.colormap = glbind_DummyColormap;
-            wa.border_pixel = 0;
+            /* Create a dummy window if we have not received an explicit window. */
+            if (window == 0) {
+                glbind_XSetWindowAttributes wa;
 
-            /* Window's can not have dimensions of 0 in X11. We stick with dimensions of 1. */
-            glbind_DummyWindow = glbind_XCreateWindow(glbind_pDisplay, glbind_XRootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, glbind_InputOutput, glbind_pFBVisualInfo->visual, glbind_CWBorderPixel | glbind_CWColormap, &wa);
-            if (glbind_DummyWindow == 0) {
+                glbind_DummyColormap = glbind_XCreateColormap(glbind_pDisplay, glbind_XRootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), glbind_pFBVisualInfo->visual, glbind_AllocNone);
+                if (glbind_DummyColormap == 0) {
+                    glbind_glXDestroyContext(glbind_pDisplay, glbind_RC);
+                    glbind_RC = 0;
+                    if (glbind_OwnsDisplay) {
+                        glbind_XCloseDisplay(glbind_pDisplay);
+                    }
+                    glbind_pDisplay = 0;
+                    glbind_pFBVisualInfo = 0;
+                    glbind_OwnsDisplay = GL_FALSE;
+                    glbUnloadOpenGLSO();
+                    return GL_INVALID_OPERATION;
+                }
+                wa.colormap = glbind_DummyColormap;
+                wa.border_pixel = 0;
+
+                /* Windows cannot have dimensions of 0 in X11. Use dimensions of 1. */
+                window = glbind_XCreateWindow(glbind_pDisplay, glbind_XRootWindow(glbind_pDisplay, glbind_pFBVisualInfo->screen), 0, 0, 1, 1, 0, glbind_pFBVisualInfo->depth, glbind_InputOutput, glbind_pFBVisualInfo->visual, glbind_CWBorderPixel | glbind_CWColormap, &wa);
+                if (window == 0) {
+                    glbind_XFreeColormap(glbind_pDisplay, glbind_DummyColormap);
+                    glbind_DummyColormap = 0;
+                    glbind_glXDestroyContext(glbind_pDisplay, glbind_RC);
+                    glbind_RC = 0;
+                    if (glbind_OwnsDisplay) {
+                        glbind_XCloseDisplay(glbind_pDisplay);
+                    }
+                    glbind_pDisplay = 0;
+                    glbind_pFBVisualInfo = 0;
+                    glbind_OwnsDisplay = GL_FALSE;
+                    glbUnloadOpenGLSO();
+                    return GL_INVALID_OPERATION;
+                }
+
+                glbind_DummyWindow = window;
+            }
+
+            glbind_Drawable = window;
+            if (!glbind_glXMakeCurrent(glbind_pDisplay, glbind_Drawable, glbind_RC)) {
+                glbind_glXDestroyContext(glbind_pDisplay, glbind_RC);
+                glbind_RC = 0;
+                if (glbind_DummyWindow) {
+                    glbind_XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
+                    glbind_DummyWindow = 0;
+                }
+                if (glbind_DummyColormap) {
+                    glbind_XFreeColormap(glbind_pDisplay, glbind_DummyColormap);
+                    glbind_DummyColormap = 0;
+                }
+                glbind_Drawable = 0;
+                if (glbind_OwnsDisplay) {
+                    glbind_XCloseDisplay(glbind_pDisplay);
+                }
+                glbind_pDisplay = 0;
+                glbind_pFBVisualInfo = 0;
+                glbind_OwnsDisplay = GL_FALSE;
                 glbUnloadOpenGLSO();
                 return GL_INVALID_OPERATION;
             }
-
-            glbind_glXMakeCurrent(glbind_pDisplay, glbind_DummyWindow, glbind_RC);
         }
 #endif
     }
@@ -23740,7 +23803,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
         result = glbInitContextAPI(glbind_DC, glbind_RC, pAPI);
 #endif
 #if defined(GLBIND_GLX)
-        result = glbInitContextAPI(glbind_pDisplay, glbind_DummyWindow, glbind_RC, pAPI);
+        result = glbInitContextAPI(glbind_pDisplay, glbind_Drawable, glbind_RC, pAPI);
 #endif
         if (result == GL_NO_ERROR) {
             if (g_glbInitCount == 0) {
@@ -23755,7 +23818,7 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
         result = glbInitContextAPI(glbind_DC, glbind_RC, &tempAPI);
 #endif
 #if defined(GLBIND_GLX)
-        result = glbInitContextAPI(glbind_pDisplay, glbind_DummyWindow, glbind_RC, &tempAPI);
+        result = glbInitContextAPI(glbind_pDisplay, glbind_Drawable, glbind_RC, &tempAPI);
 #endif
         if (result == GL_NO_ERROR) {
             if (g_glbInitCount == 0) {
@@ -23787,11 +23850,17 @@ GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig)
                 glbind_XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
                 glbind_DummyWindow = 0;
             }
+            if (glbind_DummyColormap) {
+                glbind_XFreeColormap(glbind_pDisplay, glbind_DummyColormap);
+                glbind_DummyColormap = 0;
+            }
+            glbind_Drawable = 0;
             if (glbind_pDisplay && glbind_OwnsDisplay) {
                 glbind_XCloseDisplay(glbind_pDisplay);
-                glbind_pDisplay    = 0;
-                glbind_OwnsDisplay = GL_FALSE;
             }
+            glbind_pDisplay    = 0;
+            glbind_pFBVisualInfo = 0;
+            glbind_OwnsDisplay = GL_FALSE;
 #endif
 
             glbUnloadOpenGLSO();
@@ -23841,9 +23910,15 @@ GLenum glbInitContextAPI(glbind_Display*dpy, GLXDrawable drawable, GLXContext rc
         dpyPrev      = glbind_glXGetCurrentDisplay();
     }
 
-    glbind_glXMakeCurrent(dpy, drawable, rc);
+    if (!glbind_glXMakeCurrent(dpy, drawable, rc)) {
+        return GL_INVALID_OPERATION;
+    }
+
     result = glbInitCurrentContextAPI(pAPI);
-    glbind_glXMakeCurrent(dpyPrev, drawablePrev, rcPrev);
+
+    if (!glbind_glXMakeCurrent((dpyPrev != NULL) ? dpyPrev : dpy, drawablePrev, rcPrev)) {
+        return GL_INVALID_OPERATION;
+    }
 
     return result;
 }
@@ -27157,6 +27232,10 @@ void glbUninit(void)
 #endif
 #if defined(GLBIND_GLX)
         if (glbind_RC) {
+            if (!glbind_glXMakeCurrent(glbind_pDisplay, 0, NULL)) {
+                g_glbInitCount += 1;
+                return;
+            }
             glbind_glXDestroyContext(glbind_pDisplay, glbind_RC);
             glbind_RC = 0;
         }
@@ -27164,11 +27243,17 @@ void glbUninit(void)
             glbind_XDestroyWindow(glbind_pDisplay, glbind_DummyWindow);
             glbind_DummyWindow = 0;
         }
+        if (glbind_DummyColormap) {
+            glbind_XFreeColormap(glbind_pDisplay, glbind_DummyColormap);
+            glbind_DummyColormap = 0;
+        }
+        glbind_Drawable = 0;
         if (glbind_pDisplay && glbind_OwnsDisplay) {
             glbind_XCloseDisplay(glbind_pDisplay);
-            glbind_pDisplay    = 0;
-            glbind_OwnsDisplay = GL_FALSE;
         }
+        glbind_pDisplay    = 0;
+        glbind_pFBVisualInfo = 0;
+        glbind_OwnsDisplay = GL_FALSE;
 #endif
 
         glb_dlclose(g_glbOpenGLSO);
@@ -27192,7 +27277,7 @@ GLenum glbBindAPI(const GLBapi* pAPI)
         result = glbInitContextAPI(glbind_DC, glbind_RC, &tempAPI);
 #endif
 #if defined(GLBIND_GLX)
-        result = glbInitContextAPI(glbind_pDisplay, glbind_DummyWindow, glbind_RC, &tempAPI);
+        result = glbInitContextAPI(glbind_pDisplay, glbind_Drawable, glbind_RC, &tempAPI);
 #endif
         if (result != GL_NO_ERROR) {
             return result;
