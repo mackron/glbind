@@ -224,6 +224,8 @@ typedef struct
 #endif
 } GLBconfig;
 
+typedef void (* GLBproc)(void);
+
 /*
 Initializes a config object which can later be passed to glbInit() to configure the rendering context that's created by glbInit().
 */
@@ -250,6 +252,11 @@ defaults. Initialize the config object with glbConfigInit(). The default config 
 8-bit stencil and double-buffered.
 */
 GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig);
+
+/*
+Retrieves a function pointer by name. This can only be called after glbInit() and depends on the currently bound context.
+*/
+GLBproc glbGetProcAddress(const char* name);
 
 /*
 Loads context-specific APIs into the specified API object.
@@ -367,7 +374,6 @@ GLboolean glbIsExtensionSupported(GLBapi* pAPI, const char* extensionName);
 #endif /* GLBIND_NO_GLOBAL_API */
 
 typedef void* GLBhandle;
-typedef void (* GLBproc)(void);
 
 void glbZeroMemory(void* p, size_t sz)
 {

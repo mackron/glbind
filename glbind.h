@@ -1,6 +1,6 @@
 /*
 OpenGL API loader. Choice of public domain or MIT-0. See license statements at the end of this file.
-glbind - v4.6.19 - 2026-08-26
+glbind - v4.6.20 - 2026-08-26
 
 David Reid - davidreidsoftware@gmail.com
 */
@@ -19860,6 +19860,8 @@ typedef struct
 #endif
 } GLBconfig;
 
+typedef void (* GLBproc)(void);
+
 /*
 Initializes a config object which can later be passed to glbInit() to configure the rendering context that's created by glbInit().
 */
@@ -19886,6 +19888,11 @@ defaults. Initialize the config object with glbConfigInit(). The default config 
 8-bit stencil and double-buffered.
 */
 GLenum glbInit(GLBapi* pAPI, GLBconfig* pConfig);
+
+/*
+Retrieves a function pointer by name. This can only be called after glbInit() and depends on the currently bound context.
+*/
+GLBproc glbGetProcAddress(const char* name);
 
 /*
 Loads context-specific APIs into the specified API object.
@@ -23257,7 +23264,6 @@ PFNGLXGETTRANSPARENTINDEXSUNPROC glXGetTransparentIndexSUN;
 #endif /* GLBIND_NO_GLOBAL_API */
 
 typedef void* GLBhandle;
-typedef void (* GLBproc)(void);
 
 void glbZeroMemory(void* p, size_t sz)
 {
